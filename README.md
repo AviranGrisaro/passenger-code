@@ -22,10 +22,9 @@ No third-party Swift packages yet. That's deliberate — each one gets added whe
 
 ```
 Passenger/            app target (file-system synchronized group)
-  PassengerApp.swift  entry point
-  RootMapView.swift   the map — the whole product lives here
-PassengerTests/       unit tests (Swift Testing)
-PassengerUITests/     UI tests (XCTest)
+  PassengerApp.swift  entry point — empty ContentView, nothing else
+PassengerTests/       unit tests (Swift Testing) — empty
+PassengerUITests/     UI tests (XCTest) — empty
 ```
 
 Targets use Xcode's **synchronized file groups** — adding a `.swift` file to the folder is enough, no `project.pbxproj` edit needed.
@@ -42,7 +41,7 @@ xcodebuild test -project Passenger.xcodeproj -scheme Passenger -destination 'pla
 
 ## Status
 
-Fresh start, 2026-07-26. Builds clean, one passing test. Nothing else is built yet — every feature comes from a PRD in `passenger-brain/prds/`, and every PRD must cite the strategy line that authorizes it.
+Empty by design, 2026-07-27. The Xcode project, targets, and schemes exist and build clean — there is no app code and no tests. First feature comes from a PRD in `passenger-brain/prds/`, and every PRD must cite the strategy line that authorizes it.
 
 ## The old codebase
 
