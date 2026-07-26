@@ -1,0 +1,31 @@
+# macOS
+.DS_Store
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+.dd-*/
+build/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.swiftpm/
+.build/
+Packages/
+
+# Secrets / config — never committed, env or local plist only
+SupabaseConfig.plist
+.env
+.env.*
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+
+# Claude Code local settings
+.claude/settings.local.json
