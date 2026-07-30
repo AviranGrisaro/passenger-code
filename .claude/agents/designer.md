@@ -37,6 +37,12 @@ One doc per feature: `passenger-brain/design/<phase-slug>/<feature-slug>-design.
 7. **Principles conformance** — every threshold call the spec makes (touch target size, contrast ratio, response-time budget, option count per decision, thumb-zone placement, etc.) cites `passenger-brain/design/design-principles.md` by section, not asserted from taste. This is what product + COS check at `design-approval`: a numeric design decision with no citation, or a Section 2/3/5 area relevant to the feature (universal laws, iOS/SwiftUI translation, accessibility) left unaddressed, is a REJECT back to `design` same as a dropped PRD requirement.
 An approver should be able to verdict from the doc alone, without asking you questions.
 
+8. **`ui-design-review` pass — applied, not cited (standing rule, 2026-07-30, Aviran's direct ask).** Citing a manual section by name is not the same as running the review, and every spec from now on needs the difference to be visible on the page. Every spec's own numbered section list gets an explicit **`ui-design-review` pass** subsection (see T-033's `hood-place-detail-design.md` §2.3 for the model to match), run against `passenger-brain/design/reference/ui-ux-design-principles-manual.md` (the vendored manual) and `design/design-principles.md` (Passenger's platform-adapted quick-reference), written in the skill's own three-part shape:
+   - **Passes** — which manual/principles rules the spec already satisfies, checked against actual numbers (measured pixel widths, computed contrast ratios, actual button-tier styling), not asserted from taste.
+   - **Issues found, and fixed in this same pass** — any real problem the review turns up gets fixed before submission, not deferred as a follow-up. State what was wrong, cite the exact rule it violated, and describe the fix, in both the spec and the mockup.
+   - **Quick wins considered, not applied** — options you weighed and rejected, with the reasoning, so a reviewer sees the trade-off was made on purpose rather than missed.
+   A spec whose review section only restates rules the design already obviously followed, with no real issue ever surfacing, is worth a second look — the point is to actually find things, not perform having looked.
+
 ## Design principles for Passenger
 - Map-first: every screen answers "where is it busy right now" within one glance.
 - iOS-native: follow Apple HIG; use SwiftUI-native patterns the developer can actually build.
