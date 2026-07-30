@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	Added defensively at T-031 build time (TRD §11 C9 build note, both
+	`ios-developer` and `ios-code-reviewer` at trd-review). Checked against
+	Apple's Required Reason API list: `CLLocationManager` authorization-status
+	reads and plain `FileManager` writes to Application Support
+	(`DensityCache`) are not on that list as of this build — no required-reason
+	API usage to declare, and no tracking or data collection exists in V1
+	(TRD §3.3 — the app never holds a user coordinate or any identifier).
+	Present so a later feature that *does* add a required-reason API has a
+	file to extend rather than one to invent at submission time.
+	-->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array/>
+</dict>
+</plist>
