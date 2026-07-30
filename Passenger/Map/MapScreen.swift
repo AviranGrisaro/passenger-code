@@ -107,6 +107,30 @@ struct MapScreen: View {
                 Task { await densityStore.refreshIfHourRolled() }
             }
         }
+        .onChange(of: locationStore.authorizationStatus) { oldStatus, newStatus in
+            // Recenter on the *transition* into an authorized state, not on
+            // every status value — this is the auto-scheduled system-prompt
+            // path (PermissionPrompt fires without a near-me tap), so nothing
+            // else reacts to a grant unless we do it here (qa T-031 Finding
+            // A). `isNewGrant` fires exactly once per grant and never again
+            // for e.g. `.authorizedWhenInUse` -> `.authorizedAlways`,
+            // matching the same one-shot camera set `handleNearMeTap` does on
+            // its own authorized branch below.
+            guard Self.isNewGrant(from: oldStatus, to: newStatus) else { return }
+            camera = .userLocation(fallback: .region(Self.telAvivCityWide))
+        }
+    }
+
+    /// True exactly when a status change represents a first-time grant
+    /// (denied/restricted/notDetermined -> authorized*), as opposed to a
+    /// lateral move between two already-authorized states or a re-render with
+    /// no actual change. Pulled out as a pure, static predicate so the
+    /// recenter-on-grant fix (qa T-031 Finding A) has a fast unit test
+    /// instead of relying only on a manual simctl repro.
+    static func isNewGrant(from oldStatus: CLAuthorizationStatus, to newStatus: CLAuthorizationStatus) -> Bool {
+        let wasAuthorized = oldStatus == .authorizedWhenInUse || oldStatus == .authorizedAlways
+        let isAuthorized = newStatus == .authorizedWhenInUse || newStatus == .authorizedAlways
+        return !wasAuthorized && isAuthorized
     }
 
     /// Off the main actor; the map renders before this resolves (§5.1, §7).
