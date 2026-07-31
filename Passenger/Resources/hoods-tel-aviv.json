@@ -3,6 +3,7 @@
   "generatedAt": "2026-07-31T20:40:21Z",
   "city": "tel-aviv",
   "_attribution": "Hood boundary geometry in this dataset (see database/data/hoods-tel-aviv.source.json, per-row `provenance.source`) is derived in part from OpenStreetMap data, (c) OpenStreetMap contributors, available under the Open Database License (ODbL) 1.0 -- https://www.openstreetmap.org/copyright . Rows with provenance.source == 'manual' are hand-authored referencing real neighbourhood shapes/names, not an authoritative municipal or OSM source -- see the row's own provenance.sourceRef for what that means case by case. ODbL's attribution and share-alike-on-derived-databases obligations apply to the osm-sourced rows. Whether attribution must additionally be *displayed in-app* is not decided by this script -- it is Aviran's call (PAS-6 item 15; hood-dataset TRD sec 8 D8).",
+  "_note": "T-033/PAS-13 Build-Phase-1 hand-edit (chief-of-staff scoping call): the real-geometry generator (T-040/PAS-17, commit 72f4fc7) correctly ships every Hood's `blurb` as null -- no curated content exists yet -- which left Phase-1's req-2 blurb-branch demo with nothing to render. Exactly one Hood, `florentin`, has had its `blurb` hand-set to a `[PROVISIONAL]`-prefixed placeholder (the same text T-040's earlier placeholder bundle used for this Hood, reused as-is) so that demo path is observable. Geometry/polygon data, `centroid`, `isTouristTrap`, and `designatedForProgression` are untouched. This is not curated data -- it will be overwritten the moment `data-engineer` sources real blurb content and regenerates this file.",
   "hoods": [
     {
       "id": "afeka",
@@ -2332,7 +2333,7 @@
         34.76928,
         32.057561
       ],
-      "blurb": null,
+      "blurb": "[PROVISIONAL] Tel Aviv's street-art-and-nightlife district — graffiti-covered walls, converted warehouses, and bars that fill up late.",
       "isTouristTrap": null,
       "designatedForProgression": false
     },
