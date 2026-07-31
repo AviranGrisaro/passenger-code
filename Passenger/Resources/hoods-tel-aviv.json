@@ -1,7 +1,8 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generatedAt": "2026-07-30T00:00:00Z",
   "city": "tel-aviv",
+  "_note": "Build-Phase-1 hand-edit (T-040/PAS-17, hood-dataset TRD §3.5's stated exception, C2a). Geometry below is untouched. `blurb` values are PROVISIONAL placeholder copy, not curated data — they exist only so T-033's Hood sheet has a real blurb branch to demo/QA against with no backend reachable. `centroid`, `isTouristTrap` and `designatedForProgression` are deliberately left absent, not invented, per §3.5 and §8 D10. This whole file is overwritten wholesale by C3/B6 once the real generator runs (§5.1) — do not hand-edit further, and do not treat these blurbs as final.",
   "hoods": [
     {
       "id": "florentin",
@@ -11,7 +12,8 @@
         [34.770, 32.050],
         [34.770, 32.058],
         [34.760, 32.058]
-      ]
+      ],
+      "blurb": "[PROVISIONAL] Tel Aviv's street-art-and-nightlife district — graffiti-covered walls, converted warehouses, and bars that fill up late."
     },
     {
       "id": "kerem-hateimanim",
@@ -21,7 +23,8 @@
         [34.784, 32.050],
         [34.784, 32.058],
         [34.774, 32.058]
-      ]
+      ],
+      "blurb": "[PROVISIONAL] A dense grid of Yemenite-heritage lanes next to the Carmel Market, known for small family-run eateries."
     },
     {
       "id": "neve-tzedek",
@@ -31,7 +34,8 @@
         [34.770, 32.062],
         [34.770, 32.070],
         [34.760, 32.070]
-      ]
+      ],
+      "blurb": "[PROVISIONAL] Tel Aviv's oldest neighborhood outside Jaffa — restored 19th-century houses, boutique shops, quiet cobbled streets near the beach."
     },
     {
       "id": "lev-hair",
@@ -41,7 +45,8 @@
         [34.784, 32.062],
         [34.784, 32.070],
         [34.774, 32.070]
-      ]
+      ],
+      "blurb": null
     }
   ]
 }

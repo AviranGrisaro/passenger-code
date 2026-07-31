@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-31T00:00:00Z",
+  "city": "tel-aviv",
+  "hoods": [
+    {
+      "id": "florentin",
+      "name": "Florentin",
+      "polygon": [
+        [34.760, 32.050],
+        [34.770, 32.050],
+        [34.770, 32.058],
+        [34.760, 32.058]
+      ],
+      "blurb": ""
+    },
+    {
+      "id": "kerem-hateimanim",
+      "name": "Kerem HaTeimanim",
+      "polygon": [
+        [34.774, 32.050],
+        [34.784, 32.050],
+        [34.784, 32.058],
+        [34.774, 32.058],
+        [34.774, 32.050]
+      ],
+      "centroid": [34.780, 32.056],
+      "blurb": "   "
+    }
+  ]
+}

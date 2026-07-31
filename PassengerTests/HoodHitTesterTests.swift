@@ -16,7 +16,9 @@ struct HoodHitTesterTests {
         ]
         let rect = MKMapRect(x: originX, y: originY, width: side, height: side)
         let centroid = MKMapPoint(x: originX + side / 2, y: originY + side / 2).coordinate
-        return Hood(id: id, name: id, ring: ring, boundingRect: rect, centroid: centroid)
+        // Hit-testing only cares about geometry — the three hood-dataset
+        // attributes are irrelevant here and given their "unset" values.
+        return Hood(id: id, name: id, ring: ring, boundingRect: rect, centroid: centroid, blurb: nil, isTouristTrap: nil, designatedForProgression: false)
     }
 
     /// An L-shaped concave ring whose bounding box includes the notch corner,
@@ -28,7 +30,7 @@ struct HoodHitTesterTests {
             MKMapPoint(x: 40, y: 100), MKMapPoint(x: 0, y: 100),
         ]
         let rect = MKMapRect(x: 0, y: 0, width: 100, height: 100)
-        return Hood(id: "l-shape", name: "L", ring: ring, boundingRect: rect, centroid: MKMapPoint(x: 30, y: 30).coordinate)
+        return Hood(id: "l-shape", name: "L", ring: ring, boundingRect: rect, centroid: MKMapPoint(x: 30, y: 30).coordinate, blurb: nil, isTouristTrap: nil, designatedForProgression: false)
     }
 
     @Test("a point inside the ring hits")

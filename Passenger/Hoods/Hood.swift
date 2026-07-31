@@ -3,7 +3,11 @@ import MapKit
 
 /// One neighborhood polygon, decoded once from the bundled catalog and never
 /// mutated after (TRD §3.2, §4.2). `Hoods/` knows no network and no density
-/// (TRD §2.2) — this type is pure geometry plus identity.
+/// (TRD §2.2) — this type is geometry, identity, and the three curated
+/// attributes that ride along in the same bundle (hood-dataset TRD §4.3).
+/// It renders nothing and adds no behaviour: T-033/T-035/T-037 are the
+/// consumers of `blurb`/`isTouristTrap`/`designatedForProgression`, not this
+/// task (hood-dataset TRD §4.3).
 ///
 /// `Sendable` here rests on `MKMapPoint`/`MKMapRect`/`CLLocationCoordinate2D`
 /// all being plain-`Double` value types the iOS 26 SDK marks `Sendable` —
@@ -18,7 +22,16 @@ struct Hood: Identifiable, Sendable {
     let name: String
     let ring: [MKMapPoint]
     let boundingRect: MKMapRect
+    /// Read from the bundle when the generator precomputed it (§8 D5); falls
+    /// back to `HoodCatalog`'s averaged-vertex centroid when the bundle omits
+    /// it, so a stale (pre-D5) bundle still loads (§4.3 decode rules).
     let centroid: CLLocationCoordinate2D
+    /// `nil` == not curated, never a placeholder empty string (§3.1, §4.3).
+    let blurb: String?
+    /// `nil` == not yet rated — three states, not a boolean (§3.1).
+    let isTouristTrap: Bool?
+    /// No `nil` state: an undesignated Hood carries `false` explicitly (§3.1).
+    let designatedForProgression: Bool
 
     /// For `MapPolygon(coordinates:)` — `Map/` is the only layer that touches
     /// raw coordinates for rendering; `Hoods/`'s own hit-testing stays in the
