@@ -17,7 +17,29 @@ struct MapScreen: View {
     /// be legible (design spec §2 — "Hood zoom and closer only").
     private static let nameLabelSpanThreshold: Double = 0.06
 
-    @State private var camera: MapCameraPosition = .region(telAvivCityWide)
+    /// UI-test-only override (T-033/PAS-13 acceptance fix pass). Launched
+    /// with `-uiTestZoomedIn`, the app starts already zoomed in past
+    /// `nameLabelSpanThreshold`, centered on a known bundled place, so
+    /// `DetailSheetInteractionTests` can exercise the pin-tap path — now
+    /// gated on `showsNames` — deterministically. A synthesized pinch and
+    /// `doubleTap()` were both tried first to move the camera mid-test and
+    /// neither reliably worked (see that test file's header); setting the
+    /// *initial* camera sidesteps the gesture problem entirely. A real
+    /// launch never carries this argument, so it always sees
+    /// `telAvivCityWide`.
+    private static var initialCameraRegion: MKCoordinateRegion {
+        guard ProcessInfo.processInfo.arguments.contains("-uiTestZoomedIn") else {
+            return telAvivCityWide
+        }
+        // kerem-suzana-yemenite-kitchen (kerem-hateimanim) — the same
+        // fixture coordinate `DetailSheetInteractionTests` taps.
+        return MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 32.068407, longitude: 34.76525),
+            span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+        )
+    }
+
+    @State private var camera: MapCameraPosition = .region(initialCameraRegion)
     @State private var hoods: [Hood] = []
     @State private var hitTester = HoodHitTester(hoods: [])
     @State private var showsNames = false
@@ -230,13 +252,25 @@ struct MapScreen: View {
     /// Place wins over Hood: a pin always sits inside a Hood, so the reverse
     /// order would make a pin unreachable (TRD §4.5). A miss on both is
     /// never a dismiss (TRD §4.2 rule 4) — it does nothing.
+    ///
+    /// The place branch is gated on `showsNames`, the same threshold the pin
+    /// `ForEach` above is gated on — tap *resolution* and pin *rendering*
+    /// have to share one gate or they silently disagree (qa T-033/PAS-13
+    /// acceptance REJECT). Ungated, the live-computed `tolerance` below is
+    /// large enough at the cold-open camera (~700m) that every point inside
+    /// a populated Hood's real polygon falls within tolerance of one of its
+    /// own places, so a tap anywhere in e.g. Florentin opened a place modal
+    /// for a pin nobody could see. With the gate, a miss on the (now
+    /// unreachable) place branch falls through to the Hood branch below
+    /// exactly as PRD req 1's added bullet requires: at any zoom where pins
+    /// aren't drawn, a tap inside a Hood opens that Hood's sheet.
     private func handleTap(at screenPoint: CGPoint, proxy: MapProxy) {
         guard let coordinate = proxy.convert(screenPoint, from: .local) else { return }
         let tapPoint = MKMapPoint(coordinate)
         let tolerance = mapPointTolerance(forScreenPoints: 22, at: screenPoint, proxy: proxy) ?? 0
 
         let placeHitTester = PlaceHitTester(places: placeCatalog.allPlaces)
-        if let place = placeHitTester.place(at: tapPoint, tolerance: tolerance) {
+        if showsNames, let place = placeHitTester.place(at: tapPoint, tolerance: tolerance) {
             detailRouter.openPlace(place)
         } else if let hood = hitTester.hood(at: tapPoint, tolerance: tolerance) {
             detailRouter.openHood(hood)
