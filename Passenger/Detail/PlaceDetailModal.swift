@@ -28,6 +28,10 @@ struct PlaceDetailModal: View {
             Text(place.name)
                 .font(.title2.bold())
                 .accessibilityAddTraits(.isHeader)
+                // Stable hook for UI tests (T-033/PAS-13 fix pass) — proves
+                // the modal rendered *and* is showing the right place's
+                // content, not just that it's on screen.
+                .accessibilityIdentifier("placeDetailTitle")
             Spacer()
             saveButton
             closeButton

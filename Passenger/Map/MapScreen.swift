@@ -63,8 +63,17 @@ struct MapScreen: View {
                 // `handleTap`'s `SpatialTapGesture` path below can call it
                 // again for the same physical tap — `DetailRouter.openPlace`
                 // is idempotent, so both paths landing is safe (TRD §4.5).
-                ForEach(placeCatalog.allPlaces) { place in
-                    PlaceLayer(place: place) { detailRouter.openPlace(place) }
+                //
+                // Gated on `showsNames` — the same close-zoom threshold
+                // `HoodLayer`'s name label and `HoodButton` already use, per
+                // TRD §3.3/§8 D5 ("pins render at close zoom only"). No
+                // separate pin threshold exists to tune yet, so this reuses
+                // the one gate already wired to the camera rather than
+                // inventing a second one (qa T-033/PAS-13 bug 2 fix).
+                if showsNames {
+                    ForEach(placeCatalog.allPlaces) { place in
+                        PlaceLayer(place: place) { detailRouter.openPlace(place) }
+                    }
                 }
                 // Bound to authorization status, never to a tap (§8 D2) — the
                 // mockup's unconditional marker on a near-me tap while
@@ -123,12 +132,25 @@ struct MapScreen: View {
             }
             .padding(.bottom, 32)
         }
-        .environment(placeCatalog)
-        .environment(detailRouter)
-        .environment(savedPlacesStore)
         .sheet(isPresented: detailRouter.isDepth1Presented) {
             // Site A (TRD §4.2): one `.sheet` modifier, content switched
             // rather than two sheets attached to the same view.
+            //
+            // `.environment()` is applied to *this* Group — the sheet's own
+            // content — not to the presenting view above (where it lived
+            // before qa's T-033/PAS-13 crash report). Root cause: `.sheet`'s
+            // content closure does not inherit `.environment(_:)` values set
+            // on the view that hosts `.sheet`, even when those modifiers
+            // appear earlier in the same chain (the "textbook" position).
+            // Confirmed by direct repro: with `.environment()` applied above
+            // `.sheet(...)` as it was, every tap that opened this sheet threw
+            // "No Observable object of type X found" from
+            // `SwiftUICore/Environment+Objects.swift`, 100% of the time, for
+            // every one of `PlaceCatalog`/`DetailRouter`/`SavedPlacesStore` —
+            // moving the same three calls to wrap the sheet's own content
+            // (here) fixes it with no other change. `HoodSheet`'s own nested
+            // `.sheet` (Site B, depth 2) needs the identical treatment for
+            // the same reason — see its own comment.
             Group {
                 if let hood = detailRouter.hood {
                     HoodSheet(hood: hood)
@@ -136,6 +158,9 @@ struct MapScreen: View {
                     PlaceDetailModal(place: place)
                 }
             }
+            .environment(placeCatalog)
+            .environment(detailRouter)
+            .environment(savedPlacesStore)
             .presentationBackgroundInteraction(.enabled(upThrough: .medium))
         }
         .task {

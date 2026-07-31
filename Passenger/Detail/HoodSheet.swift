@@ -9,6 +9,9 @@ struct HoodSheet: View {
 
     @Environment(PlaceCatalog.self) private var placeCatalog
     @Environment(DetailRouter.self) private var router
+    // Not read by this view's own body — held only to re-apply to Site B's
+    // `.sheet` content below (see that modifier's comment for why).
+    @Environment(SavedPlacesStore.self) private var savedPlacesStore
 
     var body: some View {
         ScrollView {
@@ -25,9 +28,17 @@ struct HoodSheet: View {
         // Site B (TRD §4.2): no `.presentationBackgroundInteraction` here —
         // deliberate. What's "behind" a depth-2 modal is this Hood sheet,
         // not the map, and it is already fully covered either way.
+        //
+        // `.environment()` re-applied here, not just at Site A: `.sheet`
+        // content does not inherit `.environment(_:)` set on the *presenting*
+        // view's modifier chain — confirmed by root-causing T-033/PAS-13's
+        // crash (PROGRESS.md 2026-08-01). Each `.sheet` boundary needs its
+        // own explicit re-application of whatever its content reads.
         .sheet(isPresented: router.isDepth2Presented) {
             if let place = router.place {
                 PlaceDetailModal(place: place)
+                    .environment(router)
+                    .environment(savedPlacesStore)
             }
         }
     }
@@ -37,6 +48,10 @@ struct HoodSheet: View {
             Text(hood.name)
                 .font(.title2.bold())
                 .accessibilityAddTraits(.isHeader)
+                // Stable hook for UI tests (T-033/PAS-13 fix pass) — proves
+                // the sheet rendered *and* is showing the right Hood's
+                // content, not just that it's on screen.
+                .accessibilityIdentifier("hoodSheetTitle")
             Spacer()
             closeButton
         }

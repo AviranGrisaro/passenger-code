@@ -18,5 +18,9 @@ struct HoodButton: View {
                 .background(.thinMaterial, in: Capsule())
         }
         .accessibilityLabel("Open \(hoodName)")
+        // Stable, locale-independent hook for UI tests (T-033/PAS-13 fix
+        // pass) — the label above is fine for VoiceOver but shouldn't be
+        // what a test greps for.
+        .accessibilityIdentifier("hoodButton")
     }
 }

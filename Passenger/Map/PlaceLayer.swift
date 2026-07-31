@@ -28,6 +28,10 @@ struct PlaceLayer: MapContent {
                     .background(Circle().fill(Color.accentColor))
             }
             .accessibilityLabel("\(place.name), \(place.category.displayName)")
+            // Stable, locale-independent hook for UI tests (T-033/PAS-13 fix
+            // pass) — the label above is fine for VoiceOver but shouldn't be
+            // what a test greps for.
+            .accessibilityIdentifier("placePin-\(place.id)")
         }
         .annotationTitles(.hidden)
     }
