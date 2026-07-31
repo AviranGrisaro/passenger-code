@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-31T00:00:00Z",
+  "city": "tel-aviv",
+  "_note": "Build-Phase-1 provisional fixture (T-033/PAS-13, hood-place-detail TRD §3.4.1, step C3a). Hand-authored, NOT an export_places.py output — that emitter does not exist until T-042 step B3 (Build Phase 2), at which point this whole file is overwritten wholesale and the drift check in PlaceCatalogTests goes live (TRD §11 B2). Names, coordinates, place_type, keywords and is_tourist_trap here are placeholder/demo values, not curated data. Coordinates are deliberately snapped inside the bundled placeholder Hood rectangles in hoods-tel-aviv.json (not real-world positions) so pins render inside the coloured shapes instead of scattering outside them (TRD §3.4.1's quality floor). `lev-hair` is deliberately given zero places here, and already carries a null blurb in hoods-tel-aviv.json, so opening it in the Hood sheet demonstrates both of PRD req 2's empty branches at once.",
+  "places": [
+    {
+      "id": "florentin-anna-loulou-bar",
+      "name": "Anna Loulou Bar",
+      "category": "eat-drink",
+      "hood_id": "florentin",
+      "latitude": 32.0531,
+      "longitude": 34.7623,
+      "place_type": "bar",
+      "keywords": ["nightlife", "cocktails"],
+      "permanently_closed": false,
+      "is_tourist_trap": null
+    },
+    {
+      "id": "florentin-hamakolet",
+      "name": "HaMakolet",
+      "category": "eat-drink",
+      "hood_id": "florentin",
+      "latitude": 32.0553,
+      "longitude": 34.7668,
+      "place_type": "cafe",
+      "keywords": ["coffee", "brunch"],
+      "permanently_closed": false,
+      "is_tourist_trap": null
+    },
+    {
+      "id": "florentin-street-art-walk",
+      "name": "Florentin Street Art Walk",
+      "category": "things-to-do",
+      "hood_id": "florentin",
+      "latitude": 32.0568,
+      "longitude": 34.7645,
+      "place_type": "landmark",
+      "keywords": ["murals", "self-guided"],
+      "permanently_closed": false,
+      "is_tourist_trap": null
+    },
+    {
+      "id": "kerem-dr-shakshuka",
+      "name": "Dr. Shakshuka",
+      "category": "eat-drink",
+      "hood_id": "kerem-hateimanim",
+      "latitude": 32.0524,
+      "longitude": 34.7765,
+      "place_type": "restaurant",
+      "keywords": ["shakshuka", "north-african"],
+      "permanently_closed": false,
+      "is_tourist_trap": null
+    },
+    {
+      "id": "kerem-carmel-spice-corner",
+      "name": "Carmel Market Spice Corner",
+      "category": "things-to-do",
+      "hood_id": "kerem-hateimanim",
+      "latitude": 32.0552,
+      "longitude": 34.7801,
+      "place_type": "market",
+      "keywords": ["spices", "browsing"],
+      "permanently_closed": false,
+      "is_tourist_trap": null
+    },
+    {
+      "id": "kerem-suzana-yemenite-kitchen",
+      "name": "Suzana Yemenite Kitchen",
+      "category": "eat-drink",
+      "hood_id": "kerem-hateimanim",
+      "latitude": 32.0568,
+      "longitude": 34.7823,
+      "place_type": "restaurant",
+      "keywords": ["yemenite", "soup"],
+      "permanently_closed": false,
+      "is_tourist_trap": null
+    },
+    {
+      "id": "neve-suzanne-restaurant",
+      "name": "Suzanne Restaurant",
+      "category": "eat-drink",
+      "hood_id": "neve-tzedek",
+      "latitude": 32.0645,
+      "longitude": 34.7634,
+      "place_type": "restaurant",
+      "keywords": ["garden-seating", "brunch"],
+      "permanently_closed": false,
+      "is_tourist_trap": null
+    },
+    {
+      "id": "neve-nachum-gutman-museum",
+      "name": "Nachum Gutman Museum",
+      "category": "things-to-do",
+      "hood_id": "neve-tzedek",
+      "latitude": 32.0672,
+      "longitude": 34.7658,
+      "place_type": "museum",
+      "keywords": ["art", "indoor"],
+      "permanently_closed": false,
+      "is_tourist_trap": null
+    },
+    {
+      "id": "neve-nina-cafe",
+      "name": "Nina Cafe",
+      "category": "eat-drink",
+      "hood_id": "neve-tzedek",
+      "latitude": 32.0688,
+      "longitude": 34.7688,
+      "place_type": "cafe",
+      "keywords": ["quiet", "espresso"],
+      "permanently_closed": false,
+      "is_tourist_trap": null
+    }
+  ]
+}

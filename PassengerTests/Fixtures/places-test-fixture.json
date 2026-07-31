@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-31T00:00:00Z",
+  "city": "tel-aviv",
+  "places": [
+    {
+      "id": "florentin-cafe",
+      "name": "Test Cafe",
+      "category": "eat-drink",
+      "hood_id": "florentin",
+      "latitude": 32.0531,
+      "longitude": 34.7623
+    },
+    {
+      "id": "florentin-museum",
+      "name": "Test Museum",
+      "category": "things-to-do",
+      "hood_id": "florentin",
+      "latitude": 32.0553,
+      "longitude": 34.7645
+    },
+    {
+      "id": "orphan-place",
+      "name": "Orphan Place",
+      "category": "eat-drink",
+      "hood_id": "no-such-hood",
+      "latitude": 32.1000,
+      "longitude": 34.8000
+    },
+    {
+      "id": "bad-category-place",
+      "name": "Bad Category Place",
+      "category": "shopping",
+      "hood_id": "florentin",
+      "latitude": 32.0540,
+      "longitude": 34.7630
+    },
+    {
+      "id": "bad-coordinate-place",
+      "name": "Bad Coordinate Place",
+      "category": "eat-drink",
+      "hood_id": "florentin",
+      "latitude": 999,
+      "longitude": 34.7630
+    }
+  ]
+}

@@ -21,7 +21,10 @@ struct MapScreen: View {
     @State private var hoods: [Hood] = []
     @State private var hitTester = HoodHitTester(hoods: [])
     @State private var showsNames = false
-    @State private var selectedHood: Hood?
+    /// The map's own centre, kept in sync from `onMapCameraChange` — the
+    /// point `HoodButton` resolves its "nearest Hood" against (TRD §4.7), no
+    /// new geometry needed beyond the existing `HoodHitTester`.
+    @State private var cameraCenterPoint = MKMapPoint(x: 0, y: 0)
 
     @State private var settingsHintVisible = false
     @State private var settingsHintDismissTask: Task<Void, Never>?
@@ -29,6 +32,19 @@ struct MapScreen: View {
     @State private var densityStore = DensityStore()
     @State private var locationStore = LocationStore()
     @State private var permissionPrompt: PermissionPrompt?
+
+    // T-033: place/Hood detail (TRD §2.1). One session-scoped catalog, one
+    // router, read by both sheets and the pin layer — no per-sheet fetch.
+    @State private var placeCatalog = PlaceCatalog()
+    @State private var savedPlacesStore = SavedPlacesStore()
+    @State private var detailRouter = DetailRouter()
+
+    /// The Hood whose polygon contains the camera's centre right now, or
+    /// `nil` between Hoods — `HoodButton` hides itself in that gap rather
+    /// than naming the nearest one by distance (TRD §4.7).
+    private var nearestHood: Hood? {
+        hitTester.hood(at: cameraCenterPoint, tolerance: 0)
+    }
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -42,6 +58,14 @@ struct MapScreen: View {
                         showsName: showsNames
                     )
                 }
+                // T-033: the minimal pin layer (TRD §1.2, §4.5, D5). Tapping
+                // the annotation's own button calls `openPlace` directly;
+                // `handleTap`'s `SpatialTapGesture` path below can call it
+                // again for the same physical tap — `DetailRouter.openPlace`
+                // is idempotent, so both paths landing is safe (TRD §4.5).
+                ForEach(placeCatalog.allPlaces) { place in
+                    PlaceLayer(place: place) { detailRouter.openPlace(place) }
+                }
                 // Bound to authorization status, never to a tap (§8 D2) — the
                 // mockup's unconditional marker on a near-me tap while
                 // `.notDetermined` is a mockup bug, not a build target.
@@ -53,6 +77,7 @@ struct MapScreen: View {
             .onAppear { ColdOpenSignpost.endIfNeeded() }
             .onMapCameraChange { context in
                 showsNames = context.region.span.latitudeDelta < Self.nameLabelSpanThreshold
+                cameraCenterPoint = MKMapPoint(context.region.center)
             }
             .simultaneousGesture(
                 // FB19394663 (iOS 26 known issue): `.onTapGesture` does not
@@ -83,14 +108,35 @@ struct MapScreen: View {
                     SettingsHint()
                         .transition(.opacity)
                 }
+                // The second door to a Hood's detail sheet (TRD §1.2, §4.7),
+                // visible at exactly the zoom `showsNames` already gates.
+                // Bucket-2 chrome once T-032 ships a nav-row modal to hide
+                // behind (TRD §4.7) — no such state exists in this codebase
+                // yet (T-032 is still in `design`), so there is nothing to
+                // condition that on today; not fabricated ahead of it.
+                if showsNames, let nearestHood {
+                    HoodButton(hoodName: nearestHood.name) {
+                        detailRouter.openHood(nearestHood)
+                    }
+                }
                 NearMeButton(authorizationStatus: locationStore.authorizationStatus, action: handleNearMeTap)
             }
             .padding(.bottom, 32)
         }
-        .sheet(item: $selectedHood) { hood in
-            // T-031 ships the stub destination; T-033 owns its real content
-            // (TRD §5.1 — "One tap, no preview step").
-            HoodStubSheet(hood: hood)
+        .environment(placeCatalog)
+        .environment(detailRouter)
+        .environment(savedPlacesStore)
+        .sheet(isPresented: detailRouter.isDepth1Presented) {
+            // Site A (TRD §4.2): one `.sheet` modifier, content switched
+            // rather than two sheets attached to the same view.
+            Group {
+                if let hood = detailRouter.hood {
+                    HoodSheet(hood: hood)
+                } else if let place = detailRouter.place {
+                    PlaceDetailModal(place: place)
+                }
+            }
+            .presentationBackgroundInteraction(.enabled(upThrough: .medium))
         }
         .task {
             permissionPrompt = PermissionPrompt(locationStore: locationStore)
@@ -100,6 +146,12 @@ struct MapScreen: View {
         }
         .task {
             await densityStore.load()
+        }
+        .task {
+            await placeCatalog.load()
+        }
+        .task {
+            await savedPlacesStore.load()
         }
         .onChange(of: scenePhase) { _, newPhase in
             permissionPrompt?.isSceneActive = (newPhase == .active)
@@ -150,11 +202,20 @@ struct MapScreen: View {
         }
     }
 
+    /// Place wins over Hood: a pin always sits inside a Hood, so the reverse
+    /// order would make a pin unreachable (TRD §4.5). A miss on both is
+    /// never a dismiss (TRD §4.2 rule 4) — it does nothing.
     private func handleTap(at screenPoint: CGPoint, proxy: MapProxy) {
         guard let coordinate = proxy.convert(screenPoint, from: .local) else { return }
         let tapPoint = MKMapPoint(coordinate)
         let tolerance = mapPointTolerance(forScreenPoints: 22, at: screenPoint, proxy: proxy) ?? 0
-        selectedHood = hitTester.hood(at: tapPoint, tolerance: tolerance)
+
+        let placeHitTester = PlaceHitTester(places: placeCatalog.allPlaces)
+        if let place = placeHitTester.place(at: tapPoint, tolerance: tolerance) {
+            detailRouter.openPlace(place)
+        } else if let hood = hitTester.hood(at: tapPoint, tolerance: tolerance) {
+            detailRouter.openHood(hood)
+        }
     }
 
     /// Converts a screen-point distance into a map-point distance at the
@@ -198,21 +259,5 @@ struct MapScreen: View {
             guard !Task.isCancelled else { return }
             withAnimation { settingsHintVisible = false }
         }
-    }
-}
-
-/// T-031 ships this stub; T-033 owns the real Hood/place detail sheet content.
-private struct HoodStubSheet: View {
-    let hood: Hood
-
-    var body: some View {
-        VStack(spacing: 12) {
-            Text(hood.name)
-                .font(.title2.weight(.semibold))
-            Text("Hood detail is built in T-033.")
-                .foregroundStyle(.secondary)
-        }
-        .padding()
-        .presentationDetents([.medium])
     }
 }
