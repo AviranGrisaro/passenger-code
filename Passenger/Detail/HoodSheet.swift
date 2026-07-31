@@ -13,9 +13,7 @@ struct HoodSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text(hood.name)
-                    .font(.title2.bold())
-                    .accessibilityAddTraits(.isHeader)
+                header
 
                 content
             }
@@ -32,6 +30,28 @@ struct HoodSheet: View {
                 PlaceDetailModal(place: place)
             }
         }
+    }
+
+    private var header: some View {
+        HStack(alignment: .top) {
+            Text(hood.name)
+                .font(.title2.bold())
+                .accessibilityAddTraits(.isHeader)
+            Spacer()
+            closeButton
+        }
+    }
+
+    private var closeButton: some View {
+        Button {
+            router.closeHood()
+        } label: {
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 32))  // 32pt visual glyph
+                .foregroundStyle(.secondary)
+                .frame(width: 44, height: 44)  // in a 44x44pt target
+        }
+        .accessibilityLabel("Close")
     }
 
     @ViewBuilder
