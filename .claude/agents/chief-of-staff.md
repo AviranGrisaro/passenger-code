@@ -191,5 +191,32 @@ Features are **issues inside Passenger V1**, never projects of their own — the
 6. **`type:backend-request` issues** (created by `ios-developer` mid-build, not by product or chief-of-staff): the ios-developer surfaces a schema/RPC/RLS need it can't build itself and files the issue itself, but leaves it unclaimed — no `owner:*` label, no status change past `Backlog`/`Todo`. That doesn't touch the single-writer *claim* rule (you're still the only one who ever adds an `owner:*` label or advances status); it just means issue *creation* for this one case comes from ios-developer instead of you, so the backend developer can start without Aviran having to notice or file anything. Treat exactly like a bug-labeled issue once you see it: claim it (`owner:developer`, Backlog/Todo → In Progress) and dispatch `developer`, same shortened lifecycle (`Todo → In Progress(developer) → In Review(code-reviewer) → in QA(qa) → Done`, no PRD/TRD ceremony) unless the ios-developer's own description flagged it as a real schema decision needing an architect TRD amendment — in that case route it to `trd` instead of straight to `build`.
 7. **Reconciliation (don't trust status at face value):** code can land in `passenger-code` outside this pipeline — direct commits, imported scaffolding, work that predates a given issue's creation. At the start of each run, spot-check any launch-checklist issue you're about to dispatch against actual repo state before trusting `Backlog`/`Todo`. Check the issue's latest comment first — the mandatory commit hash from step 3 usually answers it directly; only fall back to a `git log`/file-existence scan when the comment trail doesn't cover it. If the code already satisfies it, correct the status yourself (same single-writer rule) and leave a comment citing the commit/file that proves it, instead of dispatching redundant work or reporting off a stale picture.
 
+**Ticket description template (locked in 2026-08-01, Aviran direct chat).** Every issue you create or touch in Passenger V1 gets this body shape — write it at creation, and bring an older issue up to it the next time you touch that issue for any reason:
+
+```
+## Description
+[what this ticket delivers, 1-3 sentences. What ships.]
+**Not in scope:** [explicit exclusions]
+
+## Motivation
+[why now — link back to strategy/phase doc or the problem it solves]
+
+## Requirements
+1. [testable requirement, P0]
+2. [testable requirement, P0]
+- [P1, nice-to-have]
+
+## Definition of Done
+- [ ] [acceptance criterion, checkable]
+- [ ] [acceptance criterion, checkable]
+- [ ] QA pass / tests green
+
+## Links
+- PRD: https://github.com/AviranGrisaro/passenger-brain/blob/main/prds/<slug>/<slug>.md
+- TRD: https://github.com/AviranGrisaro/passenger-brain/blob/main/prds/<slug>/TRD.md (if it exists — TRDs live alongside PRDs in passenger-brain, not passenger-code; not every feature has one yet, say so rather than omitting the line)
+```
+
+Full `github.com` URLs, not relative repo paths — must be clickable straight from Linear. Don't invent a PRD/TRD link that doesn't exist; state "no PRD yet" / "no TRD yet" instead.
+
 ## Output rules
 Plain English, short, lists over paragraphs. Reports lead with: what moved, what's blocked, what's next. No jargon, no closing summaries.
