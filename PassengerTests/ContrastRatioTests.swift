@@ -51,3 +51,36 @@ struct SettingsHintContrastTests {
         #expect(ratio >= 4.5, "\(style) contrast was \(ratio), below WCAG AA 4.5:1")
     }
 }
+
+/// places-been-saved TRD §4.10, §9 row 4d — same construction as
+/// `SettingsHintContrastTests`: resolves the real Asset Catalog color sets
+/// under real light/dark trait collections rather than duplicating hex
+/// literals, so this stays correct if a designer edits the catalog later.
+@Suite("Places list contrast (§4.10)")
+struct PlacesListContrastTests {
+    @Test("MutedOnSurface meets WCAG AA 4.5:1 against Surface, light and dark", arguments: [
+        UIUserInterfaceStyle.light,
+        UIUserInterfaceStyle.dark,
+    ])
+    func mutedOnSurfaceMeetsAA(style: UIUserInterfaceStyle) throws {
+        let trait = UITraitCollection(userInterfaceStyle: style)
+        let muted = try #require(UIColor(named: "MutedOnSurface", in: .main, compatibleWith: trait))
+        let surface = try #require(UIColor(named: "Surface", in: .main, compatibleWith: trait))
+
+        let ratio = ContrastRatio.ratio(muted.resolvedColor(with: trait), surface.resolvedColor(with: trait))
+        #expect(ratio >= 4.5, "\(style) contrast was \(ratio), below WCAG AA 4.5:1")
+    }
+
+    @Test("BadgeOnSurface meets WCAG AA 4.5:1 against BadgeSurface, light and dark", arguments: [
+        UIUserInterfaceStyle.light,
+        UIUserInterfaceStyle.dark,
+    ])
+    func badgeTokensMeetAA(style: UIUserInterfaceStyle) throws {
+        let trait = UITraitCollection(userInterfaceStyle: style)
+        let onSurface = try #require(UIColor(named: "BadgeOnSurface", in: .main, compatibleWith: trait))
+        let surface = try #require(UIColor(named: "BadgeSurface", in: .main, compatibleWith: trait))
+
+        let ratio = ContrastRatio.ratio(onSurface.resolvedColor(with: trait), surface.resolvedColor(with: trait))
+        #expect(ratio >= 4.5, "\(style) contrast was \(ratio), below WCAG AA 4.5:1")
+    }
+}

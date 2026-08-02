@@ -171,4 +171,60 @@ struct PlaceCatalogTests {
         #expect(catalog.source == .unavailable)
         #expect(catalog.allPlaces.isEmpty)
     }
+
+    // MARK: - places-been-saved TRD §3.2/§11 C1 — permanentlyClosed decode, all three source paths
+
+    @Test("permanentlyClosed decodes correctly from the bundled seed fixture, per place")
+    func permanentlyClosedDecodesFromSeed() async {
+        let catalog = Self.makeSeedCatalog()
+        await catalog.load()
+
+        #expect(catalog.place(id: "florentin-cafe")?.permanentlyClosed == false)
+        #expect(catalog.place(id: "florentin-museum")?.permanentlyClosed == true)
+    }
+
+    @Test("the real shipped bundle decodes with 9 places and exactly the two flagged permanently closed")
+    func shippedBundleDecodesNinePlacesTwoFlagged() async {
+        // Default `bundle: .main` — `PassengerTests` runs hosted
+        // (`TEST_HOST = Passenger.app`, project.pbxproj), so `Bundle.main`
+        // is the compiled app bundle carrying the real `places-tel-aviv.json`
+        // (same property `SettingsHintContrastTests` relies on for assets).
+        let catalog = PlaceCatalog(api: FetchSpy(), cache: NoopCache())
+        await catalog.load()
+
+        #expect(catalog.source == .seed)
+        #expect(catalog.allPlaces.count == 9)
+
+        let closedIDs = Set(catalog.allPlaces.filter(\.permanentlyClosed).map(\.id))
+        #expect(closedIDs == ["kerem-carmel-spice-corner", "neve-nachum-gutman-museum"])
+    }
+
+    @Test("a live payload's PlaceRow JSON missing permanently_closed fails to decode")
+    func liveDecodeThrowsWhenPermanentlyClosedMissing() {
+        let json = """
+        [{"id":"a","name":"A","category":"eat-drink","latitude":32.05,"longitude":34.77}]
+        """.data(using: .utf8)!
+        #expect(throws: (any Error).self) {
+            _ = try JSONDecoder().decode([PlacesAPI.PlaceRow].self, from: json)
+        }
+    }
+
+    @Test("a live payload's PlaceRow JSON with permanently_closed decodes it correctly")
+    func liveDecodeSucceedsWhenPermanentlyClosedPresent() throws {
+        let json = """
+        [{"id":"a","name":"A","category":"eat-drink","latitude":32.05,"longitude":34.77,"permanently_closed":true}]
+        """.data(using: .utf8)!
+        let rows = try JSONDecoder().decode([PlacesAPI.PlaceRow].self, from: json)
+        #expect(rows.first?.permanentlyClosed == true)
+    }
+
+    @Test("an older PlacesCache.CachedPlace payload missing permanentlyClosed fails to decode — falls through to the seed")
+    func cacheDecodeThrowsWhenPermanentlyClosedMissing() {
+        let json = """
+        {"places":[{"id":"a","name":"A","category":"eat-drink","hoodID":"florentin","latitude":32.05,"longitude":34.77}],"hoodBlurbs":{}}
+        """.data(using: .utf8)!
+        #expect(throws: (any Error).self) {
+            _ = try JSONDecoder().decode(PlacesCache.Payload.self, from: json)
+        }
+    }
 }

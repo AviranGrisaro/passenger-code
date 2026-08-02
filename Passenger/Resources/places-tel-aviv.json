@@ -14,7 +14,7 @@
       "place_type": "bar",
       "keywords": ["nightlife", "cocktails"],
       "permanently_closed": false,
-      "is_tourist_trap": null
+      "is_tourist_trap": true
     },
     {
       "id": "florentin-hamakolet",
@@ -50,7 +50,7 @@
       "place_type": "restaurant",
       "keywords": ["shakshuka", "north-african"],
       "permanently_closed": false,
-      "is_tourist_trap": null
+      "is_tourist_trap": false
     },
     {
       "id": "kerem-carmel-spice-corner",
@@ -61,7 +61,7 @@
       "longitude": 34.767474,
       "place_type": "market",
       "keywords": ["spices", "browsing"],
-      "permanently_closed": false,
+      "permanently_closed": true,
       "is_tourist_trap": null
     },
     {
@@ -97,7 +97,7 @@
       "longitude": 34.764886,
       "place_type": "museum",
       "keywords": ["art", "indoor"],
-      "permanently_closed": false,
+      "permanently_closed": true,
       "is_tourist_trap": null
     },
     {

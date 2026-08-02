@@ -21,6 +21,12 @@ final class SavedPlacesStore {
         savedIDs.contains(id)
     }
 
+    /// Read-only view of the saved set, for `PlacesListComposition`
+    /// (places-been-saved TRD §4.2). Computed off the same
+    /// `@Observable`-instrumented stored property `isSaved(_:)` reads, so a
+    /// list rendered from it re-renders on toggle with no new plumbing.
+    var savedPlaceIDs: Set<Place.ID> { savedIDs }
+
     /// Instant in memory — the 400ms budget is met by construction because
     /// nothing here `await`s. Disk persistence is fire-and-forget (TRD §4.4).
     func toggle(_ id: Place.ID) {

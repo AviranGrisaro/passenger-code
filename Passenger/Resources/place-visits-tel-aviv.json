@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "_note": "Build-Phase-1 demo fixture (places-been-saved TRD §3.3). Not detector output. No real user movement. Read-only, never written by the app.",
+  "visits": [
+    { "place_id": "kerem-dr-shakshuka",        "kind": "been" },
+    { "place_id": "kerem-carmel-spice-corner", "kind": "been" },
+    { "place_id": "florentin-street-art-walk", "kind": "visited" },
+    { "place_id": "neve-nachum-gutman-museum", "kind": "visited" }
+  ]
+}

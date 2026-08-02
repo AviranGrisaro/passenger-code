@@ -9,7 +9,9 @@
       "category": "eat-drink",
       "hood_id": "florentin",
       "latitude": 32.0531,
-      "longitude": 34.7623
+      "longitude": 34.7623,
+      "permanently_closed": false,
+      "is_tourist_trap": true
     },
     {
       "id": "florentin-museum",
@@ -17,7 +19,9 @@
       "category": "things-to-do",
       "hood_id": "florentin",
       "latitude": 32.0553,
-      "longitude": 34.7645
+      "longitude": 34.7645,
+      "permanently_closed": true,
+      "is_tourist_trap": false
     },
     {
       "id": "orphan-place",
@@ -25,7 +29,8 @@
       "category": "eat-drink",
       "hood_id": "no-such-hood",
       "latitude": 32.1000,
-      "longitude": 34.8000
+      "longitude": 34.8000,
+      "permanently_closed": false
     },
     {
       "id": "bad-category-place",
@@ -33,7 +38,8 @@
       "category": "shopping",
       "hood_id": "florentin",
       "latitude": 32.0540,
-      "longitude": 34.7630
+      "longitude": 34.7630,
+      "permanently_closed": false
     },
     {
       "id": "bad-coordinate-place",
@@ -41,7 +47,8 @@
       "category": "eat-drink",
       "hood_id": "florentin",
       "latitude": 999,
-      "longitude": 34.7630
+      "longitude": 34.7630,
+      "permanently_closed": false
     }
   ]
 }

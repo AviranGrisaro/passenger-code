@@ -23,6 +23,17 @@ actor PlacesCache: PlacesCaching {
         let hoodID: String
         let latitude: Double
         let longitude: Double
+        /// places-been-saved TRD §3.2, D1 — non-optional. An older cache
+        /// file written before this field existed fails to decode as a
+        /// whole and falls through to the seed (`PlaceCatalog.load()`'s
+        /// designed fallback) — no cache migration needed, and Build Phase
+        /// 1 never writes this file at all, so no shipped device holds one.
+        let permanentlyClosed: Bool
+        /// tourist-trap-flag TRD §3.1, §11 C6 — mirrors `Place.isTouristTrap`
+        /// so a cached place doesn't silently lose its flag. `var ... = nil`,
+        /// not `let` — see `PlacesAPI.PlaceRow`'s identical field for why a
+        /// `let` default would silently defeat `Decodable` here.
+        var isTouristTrap: Bool? = nil
     }
 
     struct Payload: Codable, Sendable {

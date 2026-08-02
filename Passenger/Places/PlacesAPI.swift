@@ -24,6 +24,25 @@ struct PlacesAPI: PlacesFetching {
         let category: String
         let latitude: Double
         let longitude: Double
+        /// places-been-saved TRD §3.2, D1 — non-optional. A payload missing
+        /// this column throws out of `JSONDecoder.decode`, which
+        /// `PlaceCatalog.load()` treats like any other fetch failure and
+        /// falls back to cache/seed, never a silent `false`.
+        let permanentlyClosed: Bool
+        /// tourist-trap-flag TRD §3.1, §11 C6 — `Bool?`, absent/`null` on the
+        /// wire decodes to `nil` for free (three states, not a boolean).
+        /// `var ... = nil`, not `let` — a `let` property with an initial
+        /// value is silently excluded from `Decodable` synthesis entirely
+        /// (it would always decode to `nil` even when the JSON carries a
+        /// real value); `var` keeps both the default for manual
+        /// construction and correct decoding.
+        var isTouristTrap: Bool? = nil
+
+        enum CodingKeys: String, CodingKey {
+            case id, name, category, latitude, longitude
+            case permanentlyClosed = "permanently_closed"
+            case isTouristTrap = "is_tourist_trap"
+        }
     }
 
     /// One Hood with its blurb and nested places — the shape one round trip
@@ -62,8 +81,15 @@ struct PlacesAPI: PlacesFetching {
         ) else {
             throw PlacesAPIError.badResponse
         }
+        // places-been-saved TRD §3.2/§11 C1 + tourist-trap-flag TRD §11 C6 —
+        // widens the nested `places(...)` select to include
+        // `permanently_closed` and `is_tourist_trap` (T-042's `place_type`/
+        // `keywords` stay out; each lands in the task that first reads it).
         components.queryItems = [
-            URLQueryItem(name: "select", value: "id,blurb,places(id,name,category,latitude,longitude)"),
+            URLQueryItem(
+                name: "select",
+                value: "id,blurb,places(id,name,category,latitude,longitude,permanently_closed,is_tourist_trap)"
+            ),
             URLQueryItem(name: "city", value: "eq.tel-aviv"),
         ]
         guard let url = components.url else { throw PlacesAPIError.badResponse }

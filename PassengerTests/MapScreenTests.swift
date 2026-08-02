@@ -1,4 +1,5 @@
 import CoreLocation
+import MapKit
 import Testing
 @testable import Passenger
 
@@ -53,5 +54,76 @@ struct MapScreenTests {
     @Test("authorized -> denied (revoked in Settings) is NOT a new grant")
     func revokedIsNotNewGrant() {
         #expect(!MapScreen.isNewGrant(from: .authorizedWhenInUse, to: .denied))
+    }
+}
+
+/// Covers places-been-saved TRD §9 row 8(b)/(c) and D8's presentation
+/// exclusivity — pure functions over `DetailRouter`/`MapChromeState`, same
+/// construction as `isNewGrant` above, so the wiring is unit-tested directly
+/// rather than through `.onChange`/button-tap plumbing that needs a live
+/// SwiftUI environment.
+@Suite("MapScreen D8 presentation wiring")
+@MainActor
+struct MapScreenD8WiringTests {
+    @Test("§9 row 8(b): opening the Places list with a Hood sheet open closes the Hood sheet")
+    func openPlacesListClosesHood() {
+        let router = DetailRouter()
+        let chrome = MapChromeState()
+        let ring = [MKMapPoint(x: 0, y: 0), MKMapPoint(x: 10, y: 0), MKMapPoint(x: 10, y: 10)]
+        router.openHood(Hood(
+            id: "florentin", name: "florentin", ring: ring,
+            boundingRect: MKMapRect(x: 0, y: 0, width: 10, height: 10),
+            centroid: MKMapPoint(x: 5, y: 5).coordinate,
+            blurb: nil, isTouristTrap: nil, designatedForProgression: false
+        ))
+
+        MapScreen.openPlacesList(router: router, chrome: chrome)
+
+        #expect(router.hood == nil)
+        #expect(chrome.presented == .places)
+    }
+
+    @Test("§9 row 8(c): toggling to .heat while the list is open and a place modal is stacked closes both, .heat is presented")
+    func leavingPlacesClosesStackedPlaceModal() {
+        let router = DetailRouter()
+        let chrome = MapChromeState()
+        chrome.toggle(.places)
+        router.openPlace(Place(
+            id: "cafe", name: "cafe", category: .eatDrink, hoodID: "florentin",
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0), permanentlyClosed: false, isTouristTrap: nil
+        ))
+
+        let oldValue = chrome.presented
+        chrome.toggle(.heat)
+        MapScreen.handlePresentedSurfaceChange(from: oldValue, to: chrome.presented, router: router)
+
+        #expect(router.place == nil)
+        #expect(chrome.presented == .heat)
+    }
+
+    @Test("opening the list (nil -> .places) does not close an unrelated place modal")
+    func openingPlacesDoesNotClosePlace() {
+        let router = DetailRouter()
+        router.openPlace(Place(
+            id: "cafe", name: "cafe", category: .eatDrink, hoodID: "florentin",
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0), permanentlyClosed: false, isTouristTrap: nil
+        ))
+
+        MapScreen.handlePresentedSurfaceChange(from: nil, to: .places, router: router)
+
+        #expect(router.place != nil)
+    }
+
+    @Test("dismissing the list (.places -> nil) closes a stacked place modal")
+    func dismissingPlacesClosesStackedPlaceModal() {
+        let router = DetailRouter()
+        router.openPlace(Place(
+            id: "cafe", name: "cafe", category: .eatDrink, hoodID: "florentin",
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0), permanentlyClosed: false, isTouristTrap: nil
+        ))
+
+        MapScreen.handlePresentedSurfaceChange(from: .places, to: nil, router: router)
+
+        #expect(router.place == nil)
     }
 }

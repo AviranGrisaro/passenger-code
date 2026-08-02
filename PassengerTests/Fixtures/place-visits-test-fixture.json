@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "visits": [
+    { "place_id": "dup-place", "kind": "visited" },
+    { "place_id": "dup-place", "kind": "been" },
+    { "place_id": "solo-been", "kind": "been" },
+    { "place_id": "solo-visited", "kind": "visited" }
+  ]
+}

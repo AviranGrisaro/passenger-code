@@ -46,6 +46,21 @@ struct SavedPlacesStoreTests {
 
         #expect(store.isSaved("florentin-cafe"))
     }
+
+    // MARK: - places-been-saved TRD §4.2 — the one addition to this store
+
+    @Test("savedPlaceIDs mirrors isSaved(_:) exactly, with no new plumbing")
+    func savedPlaceIDsMirrorsIsSaved() {
+        let store = SavedPlacesStore(persistence: FakeSavedPlacesPersistence())
+        #expect(store.savedPlaceIDs.isEmpty)
+
+        store.toggle("florentin-cafe")
+        #expect(store.savedPlaceIDs == ["florentin-cafe"])
+        #expect(store.isSaved("florentin-cafe"))
+
+        store.toggle("florentin-cafe")
+        #expect(store.savedPlaceIDs.isEmpty)
+    }
 }
 
 /// `SavedPlacesPersistence` tested directly (not through the store) so the

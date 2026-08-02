@@ -130,7 +130,9 @@ final class PlaceCatalog {
                     name: row.name,
                     category: category,
                     hoodID: hoodRow.id,
-                    coordinate: CLLocationCoordinate2D(latitude: row.latitude, longitude: row.longitude)
+                    coordinate: CLLocationCoordinate2D(latitude: row.latitude, longitude: row.longitude),
+                    permanentlyClosed: row.permanentlyClosed,
+                    isTouristTrap: row.isTouristTrap
                 )
                 byHood[hoodRow.id, default: []].append(place)
                 byID[place.id] = place
@@ -152,7 +154,9 @@ final class PlaceCatalog {
                 name: cached.name,
                 category: category,
                 hoodID: cached.hoodID,
-                coordinate: CLLocationCoordinate2D(latitude: cached.latitude, longitude: cached.longitude)
+                coordinate: CLLocationCoordinate2D(latitude: cached.latitude, longitude: cached.longitude),
+                permanentlyClosed: cached.permanentlyClosed,
+                isTouristTrap: cached.isTouristTrap
             )
             byHood[cached.hoodID, default: []].append(place)
             byID[place.id] = place
@@ -169,7 +173,8 @@ final class PlaceCatalog {
                 else { return nil }
                 return PlacesCache.CachedPlace(
                     id: row.id, name: row.name, category: row.category,
-                    hoodID: hoodRow.id, latitude: row.latitude, longitude: row.longitude
+                    hoodID: hoodRow.id, latitude: row.latitude, longitude: row.longitude,
+                    permanentlyClosed: row.permanentlyClosed, isTouristTrap: row.isTouristTrap
                 )
             }
         }
@@ -185,13 +190,24 @@ final class PlaceCatalog {
             let hoodID: String
             let latitude: Double
             let longitude: Double
-            // `place_type`, `keywords`, `permanently_closed`, `is_tourist_trap`
-            // deliberately undeclared: `Decodable` ignores unknown JSON keys,
-            // and this task's `Place` model carries none of them (TRD §8 D7).
+            /// places-been-saved TRD §3.2, D1 — non-optional, so a bundled
+            /// seed missing this key fails to decode as a whole rather than
+            /// silently reporting every place open. `place_type`, `keywords`
+            /// stay undeclared: `Decodable` ignores unknown JSON keys, and
+            /// neither this task's nor `Place`'s model reads them yet
+            /// (hood-place-detail TRD §8 D7).
+            let permanentlyClosed: Bool
+            /// tourist-trap-flag TRD §3.1, §11 C6 — `nil`/absent == not yet
+            /// rated (three states). `var ... = nil`, not `let` — see
+            /// `PlacesAPI.PlaceRow`'s identical field for why a `let`
+            /// default would silently defeat `Decodable` here.
+            var isTouristTrap: Bool? = nil
 
             enum CodingKeys: String, CodingKey {
                 case id, name, category, latitude, longitude
                 case hoodID = "hood_id"
+                case permanentlyClosed = "permanently_closed"
+                case isTouristTrap = "is_tourist_trap"
             }
         }
         let schemaVersion: Int
@@ -224,7 +240,9 @@ final class PlaceCatalog {
                 name: entry.name,
                 category: category,
                 hoodID: entry.hoodID,
-                coordinate: CLLocationCoordinate2D(latitude: entry.latitude, longitude: entry.longitude)
+                coordinate: CLLocationCoordinate2D(latitude: entry.latitude, longitude: entry.longitude),
+                permanentlyClosed: entry.permanentlyClosed,
+                isTouristTrap: entry.isTouristTrap
             )
             byHood[entry.hoodID, default: []].append(place)
             byID[place.id] = place
