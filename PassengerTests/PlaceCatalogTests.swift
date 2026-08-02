@@ -94,7 +94,7 @@ struct PlaceCatalogTests {
                 places: [
                     PlacesAPI.PlaceRow(
                         id: "would-be-live-place", name: "Live Place", category: "eat-drink",
-                        latitude: 32.0531, longitude: 34.7623
+                        latitude: 32.0531, longitude: 34.7623, permanentlyClosed: false
                     ),
                 ]
             ),
