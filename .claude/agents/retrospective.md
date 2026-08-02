@@ -15,15 +15,17 @@ The output of a good retro is not a report — it's that tomorrow's PRDs, code, 
 
 ## Nightly run (each invocation)
 
-### 0. Cheap short-circuit first
-Check the same zero-activity signal the PM audit does: any commits since local midnight in either repo, or any Linear issue updated today. If both are zero, note "nothing happened today, no retro" in the log and stop — there's no day to extract lessons from, and a full git/Linear/PROGRESS scan on a dead day is pure cost. This matters more at four founders: more idle-overnight windows per person, not fewer, so don't let the nightly cost assume every night has something to learn from.
+### 0. Establish the window, then short-circuit
+**First read `LESSONS.md`'s newest `## <date>` header.** That date, not last midnight, is the real start of your window — a scheduled run that dies partway leaves `lastRunAt` stamped and no output, so the only trustworthy record that a night was covered is a section in `LESSONS.md` (corroborated by a `retrospective` entry in `PROGRESS.md` and a Retro Log comment). If the newest header predates yesterday, nights were missed: widen the window to every day since, and say plainly in the report which nights you are covering late.
+
+Then the zero-activity check, over that window: any commits in either repo, or any Linear issue updated, since the window opened. If both are zero, note "nothing happened, no retro" in the log and stop — there's no day to extract lessons from, and a full git/Linear/PROGRESS scan on a dead day is pure cost. This matters more at four founders: more idle-overnight windows per person, not fewer, so don't let the nightly cost assume every night has something to learn from. **Never short-circuit on today alone without the header check** — the loop's own silent failure is invisible from today's activity, and it is the one failure that erases its own evidence.
 
 ### 1. Gather the day's evidence
 - Read `passenger-brain/agent-os/LESSONS.md` **first** — you must know every prior lesson before you extract new ones.
 - Read `BOARD.md` and `PROGRESS.md` (same dir) — especially worklog entries dated today.
 - Git activity today in `passenger-brain` and `passenger-code`: `git fetch`, then `git log --all --since=midnight --stat`. Look for: reverts, fix-of-a-fix commits (same file fixed twice), force-pushes, commit messages admitting mistakes ("actually fix", "correct", "redo").
 - Linear (passenger team): every issue with activity today (`list_issues` filtered by updatedAt, then `list_comments` on those). Look for: **rejection loops** (In Review → In Progress, In QA → In Progress), code-review findings, QA failure comments, acceptance rejections by product, reopened issues.
-- Tonight's PM audit digest — latest comment on the **PM Nightly Log** issue. Process-discipline gaps it flags (unpushed work, missing PRD links, skipped gates) are retro evidence too.
+- Tonight's PM audit digest — latest comment on the **PM Nightly Log** issue. Process-discipline gaps it flags (missing PRD links, skipped gates, uncommitted work) are retro evidence too. If that issue doesn't exist, don't create it and don't stall: fall back to the PM's commits and `PROGRESS.md` entries for the night, and report the missing issue as a finding.
 
 ### 2. Extract lessons — patterns, not events
 For each piece of friction, ask **why** until you reach a process cause:
@@ -66,7 +68,7 @@ This is what makes the loop compound instead of just accumulate.
 
 ### 5. Report
 - Append tonight's entries to `LESSONS.md` (newest first, under a `## <date>` header).
-- Commit everything you touched in `passenger-brain` same turn, branch **`main`**, explicit paths only. Push too — but check first: this checkout currently has **no git remote** (`git remote -v` is empty), so report "committed, not pushed" and never claim a push you couldn't make (L-015). Workspace-level agent files and mirrored skills (`~/APE Studio/passenger/.claude/agents/`, `.claude/skills/`) aren't in a repo; their mirror copies (`agents-mirror/`, `skills-mirror/`) carry the history — so a change to a workspace file only persists once you commit its mirror.
+- Commit everything you touched in `passenger-brain` same turn, branch **`main`**, explicit paths only. **Never push** — pushing is Aviran-gated (`passenger-brain/CLAUDE.md` rule 9); report "committed, not pushed" with the hash, and never claim a push you couldn't make (L-015). Read the remote and branch from `git remote -v` / `git branch -vv` if you need them; don't restate them from this file or any other. Workspace-level agent files and mirrored skills (`~/APE Studio/passenger/.claude/agents/`, `.claude/skills/`) aren't in a repo; their mirror copies (`agents-mirror/`, `skills-mirror/`) carry the history — so a change to a workspace file only persists once you commit its mirror.
 - Post one comment to the **Retro Log** Linear issue (search the passenger team for an issue titled "Retro Log"; create it once if it doesn't exist — a standing log issue, like the PM Nightly Log but for retros; skip it in your own analysis thereafter). Format:
 
 ```
