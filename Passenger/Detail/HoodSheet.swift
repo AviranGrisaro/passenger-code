@@ -18,6 +18,8 @@ struct HoodSheet: View {
             VStack(alignment: .leading, spacing: 16) {
                 header
 
+                flagLine
+
                 content
             }
             .padding()
@@ -67,6 +69,17 @@ struct HoodSheet: View {
                 .frame(width: 44, height: 44)  // in a 44x44pt target
         }
         .accessibilityLabel("Close")
+    }
+
+    /// tourist-trap-flag TRD §8 D5, §11 C8: three states, always present —
+    /// this is the surface req 4 bullet 2's "resolved on tap by the Hood
+    /// sheet" requires, since nothing else in the app resolves the
+    /// not-flagged/not-yet-rated distinction visually.
+    private var flagLine: some View {
+        let flag = TouristFlag(hood.isTouristTrap)
+        return Text(FlagCopy.hoodSheetLine(flag: flag))
+            .font(.subheadline)
+            .foregroundStyle(flag == .flagged ? Color("Flag") : .secondary)
     }
 
     @ViewBuilder

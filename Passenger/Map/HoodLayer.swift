@@ -1,28 +1,62 @@
 import MapKit
 import SwiftUI
 
-/// One Hood's polygon fill + zoom-gated name label (TRD §2.1). `Map/` is the
-/// only layer that composes `Hoods/` geometry with a `Density/` band — this is
-/// that composition (TRD §2.2); `HoodLayer` itself still knows nothing about
-/// fetching or caching, only what it's handed.
+/// One Hood's polygon fill + zoom-gated name label + tourist-trap flag
+/// stroke/label (TRD §2.1, tourist-trap-flag TRD §2.1, §2.3). `Map/` is the
+/// only layer that composes `Hoods/` geometry with a `Density/` band and the
+/// `Flag/` vocabulary — this is that composition (TRD §2.2); `HoodLayer`
+/// itself still knows nothing about fetching or caching, only what it's
+/// handed. It never sees `LocalQA/` — that module never reads or writes
+/// `HoodCatalog` (tourist-trap-flag TRD §2.2).
 struct HoodLayer: MapContent {
     let hood: Hood
     let band: HeatBand?
-    /// Visible at Hood zoom and closer only (design spec §2) — the name label,
-    /// never a density word (PRD req 7's silent-gap rule extends to text too).
-    let showsName: Bool
+    /// `MapZoomTier.tier(forLatitudeDelta:)`'s result — the single derivation
+    /// of zoom the whole layer reads, so the name label, the flag stroke and
+    /// the flag label can never silently disagree about what tier they're in
+    /// (tourist-trap-flag TRD §2.2).
+    let zoomTier: MapZoomTier
+
+    /// Visible at `.close` only (design spec §2) — unchanged threshold and
+    /// unchanged behaviour from before the flag existed (tourist-trap-flag
+    /// TRD §2.3: `closeSpanThreshold` **is** the old `nameLabelSpanThreshold`,
+    /// renamed in place).
+    private var showsName: Bool { zoomTier == .close }
+
+    private var flag: TouristFlag { TouristFlag(hood.isTouristTrap) }
+
+    /// The stroke `FlagStroke.treatment(for:band:)` would return, forced to
+    /// `.none` at `.cityWide` regardless of flag state — "no stroke at this
+    /// zoom, for any zone" (`map-rendering-spec.md` §2) is a zoom rule, not a
+    /// flag rule, so it's applied here rather than folded into the pure
+    /// treatment function (tourist-trap-flag TRD §9 row 3).
+    private var effectiveStroke: FlagStroke {
+        zoomTier == .cityWide ? .none : FlagStroke.treatment(for: flag, band: band)
+    }
 
     var body: some MapContent {
-        MapPolygon(coordinates: hood.coordinates)
-            .foregroundStyle(fillColor)
-            .stroke(.secondary.opacity(0.35), lineWidth: 0.5)
+        switch effectiveStroke {
+        case .none:
+            MapPolygon(coordinates: hood.coordinates)
+                .foregroundStyle(fillColor)
+                .stroke(.secondary.opacity(0.35), lineWidth: 0.5)
+        case .plain:
+            MapPolygon(coordinates: hood.coordinates)
+                .foregroundStyle(fillColor)
+                .stroke(Color("Flag"), lineWidth: 2.5)
+        case .busyWarning:
+            MapPolygon(coordinates: hood.coordinates)
+                .foregroundStyle(fillColor)
+                .stroke(Color("Flag"), style: StrokeStyle(lineWidth: 3, dash: [6, 4]))
+        }
 
         // One annotation per Hood, always present at every zoom — this is the
-        // *only* place a Hood's density is ever stated in words, and it's
-        // VoiceOver-only except for the plain name label. A sighted user never
-        // sees a density word here (design spec §2's centroid-channel rule);
-        // VoiceOver needs it because it can't perceive an absent fill the way
-        // sighted users read "no fill" as "quiet or no data" (design spec §4, C10).
+        // *only* place a Hood's density (and, when flagged, its tourist-trap
+        // status) is ever stated in words, and it's VoiceOver-only except for
+        // the visible capsule text. A sighted user never sees a density word
+        // here (design spec §2's centroid-channel rule); VoiceOver needs it
+        // because it can't perceive an absent fill the way sighted users read
+        // "no fill" as "quiet or no data" (design spec §4, C10).
         Annotation(hood.name, coordinate: hood.centroid) {
             annotationContent
         }
@@ -38,9 +72,22 @@ struct HoodLayer: MapContent {
                 .padding(.vertical, 2)
                 .background(.thinMaterial, in: Capsule())
                 .accessibilityLabel(voiceOverLabel)
+        } else if zoomTier == .neighborhood, let flagLabelText = FlagCopy.centroidLabel(flag: flag, band: band) {
+            // The flag's own label — `.neighborhood` tier only, flagged Hoods
+            // only (tourist-trap-flag TRD §4.2, §9 row 3). Never co-occurs
+            // with the plain name capsule above: that one is gated to
+            // `.close`, this one to `.neighborhood`, by construction.
+            Text(flagLabelText)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Color("Flag"))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(.thinMaterial, in: Capsule())
+                .accessibilityLabel(voiceOverLabel)
         } else {
-            // Invisible at city-wide zoom, but still a real accessibility
-            // element so VoiceOver can reach every Hood regardless of zoom.
+            // Invisible at city-wide zoom (and at neighborhood zoom for an
+            // unflagged Hood), but still a real accessibility element so
+            // VoiceOver can reach every Hood regardless of zoom.
             Color.clear
                 .frame(width: 1, height: 1)
                 .accessibilityElement()
@@ -49,8 +96,7 @@ struct HoodLayer: MapContent {
     }
 
     private var voiceOverLabel: String {
-        guard let band else { return "\(hood.name), no data right now" }
-        return "\(hood.name), \(band.spokenWord)"
+        HoodSpeech.label(name: hood.name, band: band, flag: flag)
     }
 
     /// No fill at all when there's no data — the map, not a color, carries

@@ -73,16 +73,20 @@ struct PlaceDetailModal: View {
             .foregroundStyle(.secondary)
     }
 
-    /// Reserved for T-035's tourist-heavy flag (TRD §4.8): renders exactly
-    /// "Tourist-heavy spot" when flagged, nothing when not — and owns
-    /// neither the icon nor the animation nor the phrasing. `Place` carries
-    /// no `isTouristTrap` field in this task (§8 D7), so there is nothing to
-    /// condition on yet. This is an acknowledged gap, not a decision this
-    /// task made — do not fabricate a placeholder value here, and do not
-    /// read "ships empty" as though the always-absent case were the call.
+    /// tourist-trap-flag TRD §4.2 row 2, §11 C7: one line, only when flagged
+    /// — `false`/`nil` render nothing and take zero height, same footprint
+    /// the placeholder `EmptyView()` occupied before this task. Independent
+    /// of `permanentlyClosed` (T-036) — no shared condition, no shared copy.
     @ViewBuilder
     private var touristTrapSlot: some View {
-        EmptyView()
+        if place.isTouristTrap == true {
+            HStack(spacing: 6) {
+                Image(systemName: "camera.fill")
+                Text(FlagCopy.placeLine)
+            }
+            .font(.subheadline)
+            .foregroundStyle(Color("Flag"))
+        }
     }
 
     private var routeButton: some View {

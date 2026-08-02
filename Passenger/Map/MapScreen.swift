@@ -13,13 +13,11 @@ struct MapScreen: View {
         span: MKCoordinateSpan(latitudeDelta: 0.14, longitudeDelta: 0.14)
     )
 
-    /// Below this span, a Hood is large enough on screen for its name label to
-    /// be legible (design spec §2 — "Hood zoom and closer only").
-    private static let nameLabelSpanThreshold: Double = 0.06
-
     /// UI-test-only override (T-033/PAS-13 acceptance fix pass). Launched
     /// with `-uiTestZoomedIn`, the app starts already zoomed in past
-    /// `nameLabelSpanThreshold`, centered on a known bundled place, so
+    /// `MapZoomTier.closeSpanThreshold` (renamed in place from
+    /// `nameLabelSpanThreshold`, tourist-trap-flag TRD §2.3 — same value, no
+    /// behaviour change), centered on a known bundled place, so
     /// `DetailSheetInteractionTests` can exercise the pin-tap path — now
     /// gated on `showsNames` — deterministically. A synthesized pinch and
     /// `doubleTap()` were both tried first to move the camera mid-test and
@@ -42,7 +40,15 @@ struct MapScreen: View {
     @State private var camera: MapCameraPosition = .region(initialCameraRegion)
     @State private var hoods: [Hood] = []
     @State private var hitTester = HoodHitTester(hoods: [])
-    @State private var showsNames = false
+    /// The single derivation of zoom from span (tourist-trap-flag TRD §2.2,
+    /// §2.3) — the map never asks "close enough to show names/pins?" and
+    /// "close enough to show the flag label?" as two independently-computed
+    /// booleans that could silently disagree.
+    @State private var zoomTier: MapZoomTier = .cityWide
+    /// Visible at `.close` and closer only (design spec §2 — "Hood zoom and
+    /// closer only") — unchanged threshold and unchanged behaviour from
+    /// before the flag existed; only the derivation moved to `MapZoomTier`.
+    private var showsNames: Bool { zoomTier == .close }
     /// The map's own centre, kept in sync from `onMapCameraChange` — the
     /// point `HoodButton` resolves its "nearest Hood" against (TRD §4.7), no
     /// new geometry needed beyond the existing `HoodHitTester`.
@@ -72,6 +78,13 @@ struct MapScreen: View {
     // T-034: the live-events overlay (TRD §2.1). One session-scoped store,
     // read by both the map layer and `handleTap` — no per-marker fetch.
     @State private var eventStore = EventStore()
+
+    // tourist-trap-flag (T-035): the ask loop (TRD §2.1, §2.2). `MapScreen`
+    // reaches `LocalQAAnswerStore` only transitively through the
+    // coordinator, never directly — the same composition-root pattern as
+    // `placeCatalog`/`hoods` above, and explicitly not a finding (TRD §2.2).
+    @State private var localQACoordinator = LocalQACoordinator()
+    @State private var localQAPresenter = LocalQAPresenter()
 
     /// The Hood whose polygon contains the camera's centre right now, or
     /// `nil` between Hoods — `HoodButton` hides itself in that gap rather
@@ -114,7 +127,7 @@ struct MapScreen: View {
                     HoodLayer(
                         hood: hood,
                         band: densityStore.band(for: hood.id, hour: densityStore.selectedHour),
-                        showsName: showsNames
+                        zoomTier: zoomTier
                     )
                 }
                 // T-033: the minimal pin layer (TRD §1.2, §4.5, D5). Tapping
@@ -161,7 +174,7 @@ struct MapScreen: View {
             }
             .onAppear { ColdOpenSignpost.endIfNeeded() }
             .onMapCameraChange { context in
-                showsNames = context.region.span.latitudeDelta < Self.nameLabelSpanThreshold
+                zoomTier = MapZoomTier.tier(forLatitudeDelta: context.region.span.latitudeDelta)
                 cameraCenterPoint = MKMapPoint(context.region.center)
             }
             .simultaneousGesture(
@@ -283,6 +296,18 @@ struct MapScreen: View {
         }
         .task {
             await eventStore.load(anchorHour: densityStore.anchorHour)
+        }
+        .task {
+            await localQACoordinator.loadPersistedState()
+        }
+        .task {
+            await localQACoordinator.start()
+        }
+        .onChange(of: localQACoordinator.toastState) { _, _ in
+            // The passthrough window is UIKit, not SwiftUI state — it's kept
+            // in sync explicitly here rather than being a view in this
+            // hierarchy at all (tourist-trap-flag TRD §8 D4).
+            localQAPresenter.update(coordinator: localQACoordinator)
         }
         .onChange(of: chrome.presented) { oldValue, newValue in
             // D8: leaving `.places` — by any path, including a switch to

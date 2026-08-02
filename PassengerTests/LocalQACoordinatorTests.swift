@@ -1,0 +1,125 @@
+import Foundation
+import Testing
+@testable import Passenger
+
+private actor NoopLocalQAPersistence: LocalQAPersisting {
+    func save(_ file: LocalQAFile, generation: Int) async {}
+    func loadIfPresent() async -> LocalQAFile? { nil }
+}
+
+/// A single-event source the test triggers manually, rather than
+/// `DebugVisitSource`'s launch-argument/timer construction — keeps these
+/// tests deterministic and fast.
+private struct ManualVisitSource: VisitSource {
+    let events: AsyncStream<VisitEvent>
+    let continuation: AsyncStream<VisitEvent>.Continuation
+
+    init() {
+        var continuation: AsyncStream<VisitEvent>.Continuation!
+        events = AsyncStream { continuation = $0 }
+        self.continuation = continuation
+    }
+}
+
+private struct NoopLocalQASync: LocalQASyncing {
+    let state: SyncState = .disabled
+    func flush(_ records: [LocalQARecord], installID: LocalQAInstallIdentity) async -> Int { 0 }
+}
+
+/// tourist-trap-flag TRD §9 row 8 (the fast, deterministic sub-checks — the
+/// 5s/1.6s timing sub-checks are covered end-to-end by `PassengerUITests`'
+/// C14 suite instead, matching this codebase's existing precedent of not
+/// unit-testing `Task.sleep`-based dismiss timers).
+@Suite("LocalQACoordinator")
+@MainActor
+struct LocalQACoordinatorTests {
+    private static func makeCoordinator(
+        answeredPlaceIDs: Set<Place.ID> = [],
+        notificationAuthorization: @escaping () -> NotificationAuthorization = { .notDetermined }
+    ) -> (LocalQACoordinator, ManualVisitSource) {
+        let source = ManualVisitSource()
+        let answerStore = LocalQAAnswerStore(persistence: NoopLocalQAPersistence())
+        for id in answeredPlaceIDs {
+            answerStore.record(placeID: id, answer: true, at: Date())
+        }
+        let coordinator = LocalQACoordinator(
+            answerStore: answerStore,
+            visitSource: source,
+            sync: NoopLocalQASync(),
+            notificationAuthorization: notificationAuthorization
+        )
+        return (coordinator, source)
+    }
+
+    @Test("no pending ask at start")
+    func startsWithNoPendingAsk() {
+        let (coordinator, _) = Self.makeCoordinator()
+        #expect(coordinator.toastState == nil)
+    }
+
+    @Test("an offer-eligible event sets toastState to .asking")
+    func offerEligibleEventAsks() async {
+        let (coordinator, source) = Self.makeCoordinator()
+        let event = VisitEvent(placeID: "p1", occurredAt: Date(), trigger: .debug)
+
+        let task = Task { await coordinator.start() }
+        source.continuation.yield(event)
+        // Yield control so the coordinator's `for await` loop can process
+        // the one event before this test inspects state.
+        await Task.yield()
+        try? await Task.sleep(for: .milliseconds(50))
+
+        #expect(coordinator.toastState == .asking(event))
+        task.cancel()
+    }
+
+    @Test("a second event while a toast is already up is dropped — one pending ask, never two")
+    func secondEventWhileAskingIsDropped() async {
+        let (coordinator, source) = Self.makeCoordinator()
+        let first = VisitEvent(placeID: "p1", occurredAt: Date(), trigger: .debug)
+        let second = VisitEvent(placeID: "p2", occurredAt: Date(), trigger: .debug)
+
+        let task = Task { await coordinator.start() }
+        source.continuation.yield(first)
+        try? await Task.sleep(for: .milliseconds(50))
+        source.continuation.yield(second)
+        try? await Task.sleep(for: .milliseconds(50))
+
+        #expect(coordinator.toastState == .asking(first))
+        task.cancel()
+    }
+
+    @Test("an already-answered place never asks, even via .debug")
+    func alreadyAnsweredNeverAsks() async {
+        let (coordinator, source) = Self.makeCoordinator(answeredPlaceIDs: ["p1"])
+        let event = VisitEvent(placeID: "p1", occurredAt: Date(), trigger: .debug)
+
+        let task = Task { await coordinator.start() }
+        source.continuation.yield(event)
+        try? await Task.sleep(for: .milliseconds(50))
+
+        #expect(coordinator.toastState == nil)
+        task.cancel()
+    }
+
+    @Test("answer(_:) immediately transitions from .asking to .confirming with the sync-state confirmation copy")
+    func answerTransitionsToConfirming() async {
+        let (coordinator, source) = Self.makeCoordinator()
+        let event = VisitEvent(placeID: "p1", occurredAt: Date(), trigger: .debug)
+
+        let task = Task { await coordinator.start() }
+        source.continuation.yield(event)
+        try? await Task.sleep(for: .milliseconds(50))
+
+        coordinator.answer(true)
+        #expect(coordinator.toastState == .confirming(text: SyncState.disabled.confirmationCopy))
+        task.cancel()
+    }
+
+    @Test("answer(_:) with no pending ask is a no-op")
+    func answerWithNoPendingAskIsNoop() {
+        let (coordinator, _) = Self.makeCoordinator()
+        coordinator.answer(true)
+        #expect(coordinator.toastState == nil)
+    }
+}
