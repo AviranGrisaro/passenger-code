@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "events": [
+    {
+      "id": "fixture-normal",
+      "name": "Fixture Meetup",
+      "start_offset_minutes": 60,
+      "duration_minutes": 120,
+      "lat": 32.0576,
+      "lng": 34.7693,
+      "venue_name": "A test venue",
+      "hood_id": "florentin",
+      "category": "music",
+      "rank": 0.5,
+      "source_name": "Fixture"
+    },
+    {
+      "id": "fixture-null-venue",
+      "name": "Fixture Null Venue",
+      "start_offset_minutes": 0,
+      "duration_minutes": 60,
+      "lat": 32.0576,
+      "lng": 34.7693,
+      "venue_name": null,
+      "hood_id": "florentin",
+      "category": null,
+      "rank": 0.4,
+      "source_name": null
+    },
+    {
+      "id": "fixture-whitespace-venue",
+      "name": "Fixture Whitespace Venue",
+      "start_offset_minutes": 0,
+      "duration_minutes": 60,
+      "lat": 32.0576,
+      "lng": 34.7693,
+      "venue_name": "   ",
+      "hood_id": "florentin",
+      "category": "  ",
+      "rank": 0.35,
+      "source_name": null
+    },
+    {
+      "id": "fixture-bad-coordinate",
+      "name": "Bad Coordinate Event",
+      "start_offset_minutes": 0,
+      "duration_minutes": 60,
+      "lat": 999,
+      "lng": 34.7693,
+      "venue_name": "x",
+      "hood_id": "florentin",
+      "category": "music",
+      "rank": 0.3,
+      "source_name": null
+    },
+    {
+      "id": "fixture-zero-duration",
+      "name": "Zero Duration Event",
+      "start_offset_minutes": 0,
+      "duration_minutes": 0,
+      "lat": 32.0576,
+      "lng": 34.7693,
+      "venue_name": "x",
+      "hood_id": "florentin",
+      "category": "music",
+      "rank": 0.2,
+      "source_name": null
+    }
+  ]
+}

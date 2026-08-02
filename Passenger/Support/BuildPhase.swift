@@ -15,4 +15,21 @@
 /// constant makes the source identical everywhere.
 enum BuildPhase {
     static let seedIsAuthoritative = true
+
+    /// places-been-saved TRD §3.3, D2 — a second constant, not a reuse of
+    /// `seedIsAuthoritative`, because it names a different axis: that one is
+    /// *bundled data vs. the server*, this is *fixture vs. a device sensor*.
+    /// Collapsing them would make the Phase-2 flip turn on a real dwell
+    /// detector that does not exist yet. `VisitedPlacesStore` reads a bundled
+    /// fixture (`BundledVisitSource`) while this is `true`; Phase 2 swaps in
+    /// a `VisitSourcing` conformer backed by the shared detector and flips
+    /// this to `false` — no other code in this feature moves.
+    static let visitsAreSeeded = true
+
+    /// `live-events-overlay/TRD.md` §7, §8 D9. A second, separate constant —
+    /// not a reuse of `seedIsAuthoritative` — because places/density go live
+    /// in Build Phase 2 while events go live one phase later, in Build
+    /// Phase 3 (`BOARD.md`). One shared constant would fire the events fetch
+    /// a phase early, against an `events_public` view that doesn't exist yet.
+    static let eventSeedIsAuthoritative = true
 }

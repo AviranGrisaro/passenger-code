@@ -61,11 +61,48 @@ struct MapScreen: View {
     @State private var savedPlacesStore = SavedPlacesStore()
     @State private var detailRouter = DetailRouter()
 
+    // places-been-saved (T-036): the second provenance source (§3.1) and the
+    // one-surface-at-a-time chrome state T-032 owns (§2.2) — created here
+    // because no other build order landed it first in this working tree; if
+    // T-032's own C1 lands later it finds `MapChromeState.swift` already
+    // correct and adds nothing to it.
+    @State private var visitedPlacesStore = VisitedPlacesStore()
+    @State private var chrome = MapChromeState()
+
+    // T-034: the live-events overlay (TRD §2.1). One session-scoped store,
+    // read by both the map layer and `handleTap` — no per-marker fetch.
+    @State private var eventStore = EventStore()
+
     /// The Hood whose polygon contains the camera's centre right now, or
     /// `nil` between Hoods — `HoodButton` hides itself in that gap rather
     /// than naming the nearest one by distance (TRD §4.7).
     private var nearestHood: Hood? {
         hitTester.hood(at: cameraCenterPoint, tolerance: 0)
+    }
+
+    /// The Places list's read-time precedence merge (places-been-saved TRD
+    /// §4.3) — a dictionary read over already-loaded data, run once per
+    /// render pass, never a per-sheet fetch.
+    private var placesListEntries: [PlacesListEntry] {
+        PlacesListComposition.entries(
+            places: placeCatalog.allPlaces,
+            saved: savedPlacesStore.savedPlaceIDs,
+            visits: visitedPlacesStore.visits
+        )
+    }
+
+    /// The event markers this render pass actually draws (T-034 TRD §4.4,
+    /// §4.6). `handleTap`'s event branch hit-tests exactly this same set, so
+    /// rendering and tap resolution can never disagree — the discipline
+    /// T-033's acceptance REJECT established for the place-pin/zoom gate,
+    /// applied here to the hour/cap gate instead.
+    private var visibleEvents: [LiveEvent] {
+        EventSelection.selected(
+            from: eventStore.events,
+            anchorHour: densityStore.anchorHour,
+            offset: densityStore.selectedHour,
+            now: Date()
+        )
     }
 
     @Environment(\.scenePhase) private var scenePhase
@@ -94,7 +131,24 @@ struct MapScreen: View {
                 // inventing a second one (qa T-033/PAS-13 bug 2 fix).
                 if showsNames {
                     ForEach(placeCatalog.allPlaces) { place in
-                        PlaceLayer(place: place) { detailRouter.openPlace(place) }
+                        PlaceLayer(
+                            place: place,
+                            isListed: PlacesListComposition.isListed(
+                                place.id, saved: savedPlacesStore.savedPlaceIDs, visits: visitedPlacesStore.visits
+                            )
+                        ) { detailRouter.openPlace(place) }
+                    }
+                }
+                // T-034: live events (TRD §2.3, §4.5). Not gated on
+                // `showsNames` — unlike place pins, there are at most 12
+                // events in the entire city (the cap, §4.4), so the layer
+                // renders at every zoom (D2). Drawn after place pins, so an
+                // event marker sitting on a place pin is the one the eye and
+                // the finger reach. Gated only on the layer-visibility
+                // toggle (§4.8, PRD req 6).
+                if eventStore.isLayerVisible {
+                    ForEach(visibleEvents) { event in
+                        EventLayer(event: event) { detailRouter.openEvent(event) }
                     }
                 }
                 // Bound to authorization status, never to a tap (§8 D2) — the
@@ -141,18 +195,37 @@ struct MapScreen: View {
                 }
                 // The second door to a Hood's detail sheet (TRD §1.2, §4.7),
                 // visible at exactly the zoom `showsNames` already gates.
-                // Bucket-2 chrome once T-032 ships a nav-row modal to hide
-                // behind (TRD §4.7) — no such state exists in this codebase
-                // yet (T-032 is still in `design`), so there is nothing to
-                // condition that on today; not fabricated ahead of it.
+                // Bucket-2 chrome once T-032's own build wires this button
+                // into the `chrome`/fade mechanism `MapChromeState` now
+                // provides (TRD §4.7) — out of scope for this file's own
+                // task, so not fabricated ahead of it here.
                 if showsNames, let nearestHood {
                     HoodButton(hoodName: nearestHood.name) {
                         detailRouter.openHood(nearestHood)
                     }
                 }
-                NearMeButton(authorizationStatus: locationStore.authorizationStatus, action: handleNearMeTap)
+                HStack(spacing: 16) {
+                    NearMeButton(authorizationStatus: locationStore.authorizationStatus, action: handleNearMeTap)
+                    // Bucket-2 chrome (TRD §2.4, D7) — fades with the rest of
+                    // this cluster whenever any `NavSurface` is presented, so
+                    // it cannot be re-tapped to dismiss its own open list
+                    // (accepted cost, D7).
+                    PlacesButton(isFaded: chrome.isPresenting, action: openPlacesList)
+                }
             }
             .padding(.bottom, 32)
+        }
+        .overlay {
+            // z5 (TRD §2.4/§4.5). Above bucket-2 chrome, below the system
+            // sheet at Site A — a `.sheet` always presents above the whole
+            // hierarchy regardless of modifier order.
+            if chrome.presented == .places {
+                PlacesListOverlay(
+                    entries: placesListEntries,
+                    onSelect: { place in detailRouter.openPlace(place) },
+                    onDismiss: { chrome.dismiss() }
+                )
+            }
         }
         .sheet(isPresented: detailRouter.isDepth1Presented) {
             // Site A (TRD §4.2): one `.sheet` modifier, content switched
@@ -178,6 +251,11 @@ struct MapScreen: View {
                     HoodSheet(hood: hood)
                 } else if let place = detailRouter.place {
                     PlaceDetailModal(place: place)
+                } else if let event = detailRouter.event {
+                    // T-034 TRD §4.7, D6: a third depth-1 destination, not a
+                    // second `.sheet`. `EventDetailModal` is handed the
+                    // event by value and needs no new environment injection.
+                    EventDetailModal(event: event)
                 }
             }
             .environment(placeCatalog)
@@ -200,10 +278,30 @@ struct MapScreen: View {
         .task {
             await savedPlacesStore.load()
         }
+        .task {
+            await visitedPlacesStore.load()
+        }
+        .task {
+            await eventStore.load(anchorHour: densityStore.anchorHour)
+        }
+        .onChange(of: chrome.presented) { oldValue, newValue in
+            // D8: leaving `.places` — by any path, including a switch to
+            // another surface — must not strand a place modal that was only
+            // reachable because the list was open underneath it.
+            Self.handlePresentedSurfaceChange(from: oldValue, to: newValue, router: detailRouter)
+        }
         .onChange(of: scenePhase) { _, newPhase in
             permissionPrompt?.isSceneActive = (newPhase == .active)
             if newPhase == .active {
-                Task { await densityStore.refreshIfHourRolled() }
+                Task {
+                    await densityStore.refreshIfHourRolled()
+                    // T-034 TRD §4.6: reuses `densityStore.anchorHour` as the
+                    // "did the hour roll" signal rather than a second timer —
+                    // `EventStore.refresh` is a no-op unless it actually
+                    // changed, so a foreground that doesn't cross an hour
+                    // boundary makes no second request.
+                    await eventStore.refresh(anchorHour: densityStore.anchorHour)
+                }
             }
         }
         .onChange(of: locationStore.authorizationStatus) { oldStatus, newStatus in
@@ -232,6 +330,35 @@ struct MapScreen: View {
         return !wasAuthorized && isAuthorized
     }
 
+    // MARK: - places-been-saved (T-036) presentation wiring — pure/testable,
+    // same construction as `isNewGrant` above: the side effect lives in a
+    // static function over the two objects it touches, so §9 row 8(b)/(c)
+    // are unit-tested directly rather than through `.onChange`/button-tap
+    // plumbing that needs a live SwiftUI environment to exercise.
+
+    /// `PlacesButton`'s action (TRD §2.4, §4.6, D8, flow §5 "Open the
+    /// list"). Closing the Hood sheet first stops a tap presenting the list
+    /// *underneath* a still-open system sheet, in a layer that can never be
+    /// reached.
+    static func openPlacesList(router: DetailRouter, chrome: MapChromeState) {
+        router.closeHood()
+        chrome.toggle(.places)
+    }
+
+    /// D8: leaving `.places` — by any path, including a switch to another
+    /// surface — closes a stacked place modal so it can never be stranded.
+    /// While `.places` is presented the scrim blocks map taps, so a depth-1
+    /// place modal open at that point can only have been opened from a list
+    /// row; closing the list must not leave it behind.
+    static func handlePresentedSurfaceChange(from oldValue: NavSurface?, to newValue: NavSurface?, router: DetailRouter) {
+        guard oldValue == .places, newValue != .places else { return }
+        router.closePlace()
+    }
+
+    private func openPlacesList() {
+        Self.openPlacesList(router: detailRouter, chrome: chrome)
+    }
+
     /// Off the main actor; the map renders before this resolves (§5.1, §7).
     private func loadHoods() async {
         let result = await Task.detached(priority: .userInitiated) {
@@ -249,9 +376,21 @@ struct MapScreen: View {
         }
     }
 
-    /// Place wins over Hood: a pin always sits inside a Hood, so the reverse
-    /// order would make a pin unreachable (TRD §4.5). A miss on both is
-    /// never a dismiss (TRD §4.2 rule 4) — it does nothing.
+    /// Event wins over place, which wins over Hood (T-034 TRD §4.5, D7): a
+    /// marker drawn on top must be the one a tap reaches, and a pin always
+    /// sits inside a Hood, so the reverse order would make either
+    /// unreachable. A miss on all three is never a dismiss (TRD §4.2 rule 4)
+    /// — it does nothing.
+    ///
+    /// The event branch is *not* gated on `showsNames` — events render at
+    /// every zoom (D2) — but it is gated on `eventStore.isLayerVisible`,
+    /// exactly the layer's own draw condition above, so tap resolution and
+    /// marker rendering share one gate the same way the place branch already
+    /// shares `showsNames` with the pin `ForEach`. Without this,
+    /// `MapScreen.swift`'s greedy `SpatialTapGesture` would fire alongside
+    /// the marker's own `Button` and, before D7, could resolve to the wrong
+    /// destination for the same physical tap — `DetailRouter.openEvent` is
+    /// idempotent, so both paths landing here is safe.
     ///
     /// The place branch is gated on `showsNames`, the same threshold the pin
     /// `ForEach` above is gated on — tap *resolution* and pin *rendering*
@@ -269,8 +408,11 @@ struct MapScreen: View {
         let tapPoint = MKMapPoint(coordinate)
         let tolerance = mapPointTolerance(forScreenPoints: 22, at: screenPoint, proxy: proxy) ?? 0
 
+        let eventHitTester = EventHitTester(events: eventStore.isLayerVisible ? visibleEvents : [])
         let placeHitTester = PlaceHitTester(places: placeCatalog.allPlaces)
-        if showsNames, let place = placeHitTester.place(at: tapPoint, tolerance: tolerance) {
+        if let event = eventHitTester.event(at: tapPoint, tolerance: tolerance) {
+            detailRouter.openEvent(event)
+        } else if showsNames, let place = placeHitTester.place(at: tapPoint, tolerance: tolerance) {
             detailRouter.openPlace(place)
         } else if let hood = hitTester.hood(at: tapPoint, tolerance: tolerance) {
             detailRouter.openHood(hood)

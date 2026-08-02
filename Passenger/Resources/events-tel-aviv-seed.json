@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "events": [
+    {
+      "id": "seed-0001",
+      "name": "Rooftop set, Levinsky",
+      "start_offset_minutes": -60,
+      "duration_minutes": 240,
+      "lat": 32.057561,
+      "lng": 34.76928,
+      "venue_name": "A rooftop",
+      "hood_id": "florentin",
+      "category": "music",
+      "rank": 0.91,
+      "source_name": "Seeded fixture"
+    },
+    {
+      "id": "seed-0002",
+      "name": "Late-night market pop-up",
+      "start_offset_minutes": 180,
+      "duration_minutes": 60,
+      "lat": 32.070339,
+      "lng": 34.766162,
+      "venue_name": null,
+      "hood_id": "kerem-hateimanim",
+      "category": "outdoors",
+      "rank": 0.62,
+      "source_name": "Seeded fixture"
+    },
+    { "id": "seed-0003", "name": "Fixture event 1", "start_offset_minutes": 300, "duration_minutes": 60, "lat": 32.068646, "lng": 34.773847, "venue_name": "Fixture venue 1", "hood_id": "lev-hair", "category": "music", "rank": 0.98, "source_name": "Seeded fixture" },
+    { "id": "seed-0004", "name": "Fixture event 2", "start_offset_minutes": 300, "duration_minutes": 60, "lat": 32.068646, "lng": 34.773847, "venue_name": "Fixture venue 2", "hood_id": "lev-hair", "category": "music", "rank": 0.96, "source_name": "Seeded fixture" },
+    { "id": "seed-0005", "name": "Fixture event 3", "start_offset_minutes": 300, "duration_minutes": 60, "lat": 32.068646, "lng": 34.773847, "venue_name": "Fixture venue 3", "hood_id": "lev-hair", "category": "music", "rank": 0.94, "source_name": "Seeded fixture" },
+    { "id": "seed-0006", "name": "Fixture event 4", "start_offset_minutes": 300, "duration_minutes": 60, "lat": 32.068646, "lng": 34.773847, "venue_name": "Fixture venue 4", "hood_id": "lev-hair", "category": "music", "rank": 0.92, "source_name": "Seeded fixture" },
+    { "id": "seed-0007", "name": "Fixture event 5", "start_offset_minutes": 300, "duration_minutes": 60, "lat": 32.068646, "lng": 34.773847, "venue_name": "Fixture venue 5", "hood_id": "lev-hair", "category": "music", "rank": 0.90, "source_name": "Seeded fixture" },
+    { "id": "seed-0008", "name": "Fixture event 6", "start_offset_minutes": 300, "duration_minutes": 60, "lat": 32.068646, "lng": 34.773847, "venue_name": "Fixture venue 6", "hood_id": "lev-hair", "category": "music", "rank": 0.88, "source_name": "Seeded fixture" },
+    { "id": "seed-0009", "name": "Fixture event 7", "start_offset_minutes": 300, "duration_minutes": 60, "lat": 32.068646, "lng": 34.773847, "venue_name": "Fixture venue 7", "hood_id": "lev-hair", "category": "music", "rank": 0.86, "source_name": "Seeded fixture" },
+    { "id": "seed-0010", "name": "Fixture event 8", "start_offset_minutes": 300, "duration_minutes": 60, "lat": 32.068646, "lng": 34.773847, "venue_name": "Fixture venue 8", "hood_id": "lev-hair", "category": "music", "rank": 0.84, "source_name": "Seeded fixture" },
+    { "id": "seed-0011", "name": "Fixture event 9", "start_offset_minutes": 300, "duration_minutes": 60, "lat": 32.068646, "lng": 34.773847, "venue_name": "Fixture venue 9", "hood_id": "lev-hair", "category": "music", "rank": 0.82, "source_name": "Seeded fixture" },
+    { "id": "seed-0012", "name": "Fixture event 10", "start_offset_minutes": 300, "duration_minutes": 60, "lat": 32.068646, "lng": 34.773847, "venue_name": "Fixture venue 10", "hood_id": "lev-hair", "category": "music", "rank": 0.80, "source_name": "Seeded fixture" },
+    { "id": "seed-0013", "name": "Fixture event 11", "start_offset_minutes": 300, "duration_minutes": 60, "lat": 32.068646, "lng": 34.773847, "venue_name": "Fixture venue 11", "hood_id": "lev-hair", "category": "music", "rank": 0.78, "source_name": "Seeded fixture" },
+    { "id": "seed-0014", "name": "Fixture event 12", "start_offset_minutes": 300, "duration_minutes": 60, "lat": 32.068646, "lng": 34.773847, "venue_name": "Fixture venue 12", "hood_id": "lev-hair", "category": "music", "rank": 0.76, "source_name": "Seeded fixture" },
+    { "id": "seed-0015", "name": "Fixture event 13", "start_offset_minutes": 300, "duration_minutes": 60, "lat": 32.068646, "lng": 34.773847, "venue_name": "Fixture venue 13", "hood_id": "lev-hair", "category": "music", "rank": 0.74, "source_name": "Seeded fixture" },
+    { "id": "seed-0016", "name": "Fixture event 14", "start_offset_minutes": 300, "duration_minutes": 60, "lat": 32.068646, "lng": 34.773847, "venue_name": "Fixture venue 14", "hood_id": "lev-hair", "category": "music", "rank": 0.72, "source_name": "Seeded fixture" },
+    {
+      "id": "seed-0017",
+      "name": "Gallery opening night",
+      "start_offset_minutes": 360,
+      "duration_minutes": 60,
+      "lat": 32.06801,
+      "lng": 34.78868,
+      "venue_name": "A gallery courtyard",
+      "hood_id": "montefiore",
+      "category": null,
+      "rank": 0.55,
+      "source_name": "Seeded fixture"
+    },
+    {
+      "id": "seed-0018",
+      "name": "Closed pop-up market",
+      "start_offset_minutes": -180,
+      "duration_minutes": 120,
+      "lat": 32.062297,
+      "lng": 34.763638,
+      "venue_name": "A side street",
+      "hood_id": "neve-tzedek",
+      "category": "market",
+      "rank": 0.40,
+      "source_name": "Seeded fixture"
+    }
+  ]
+}

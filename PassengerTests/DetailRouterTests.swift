@@ -25,7 +25,19 @@ struct DetailRouterTests {
     }
 
     private static func makePlace(id: String, hoodID: String) -> Place {
-        Place(id: id, name: id, category: .eatDrink, hoodID: hoodID, coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0))
+        Place(
+            id: id, name: id, category: .eatDrink, hoodID: hoodID,
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0), permanentlyClosed: false, isTouristTrap: nil
+        )
+    }
+
+    /// T-034 TRD §4.7, D6.
+    private static func makeEvent(id: String) -> LiveEvent {
+        LiveEvent(
+            id: id, name: id, startAt: Date(), endAt: Date().addingTimeInterval(3600),
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+            venueName: nil, hoodID: nil, category: nil, rank: 0.5, sourceName: nil
+        )
     }
 
     @Test("starts with no modal open, placeDepth nil")
@@ -183,5 +195,85 @@ struct DetailRouterTests {
         #expect(router.hood == nil)
         #expect(router.place == nil)
         #expect(!router.isDepth1Presented.wrappedValue)
+    }
+
+    // MARK: - Events (T-034 TRD §4.7, D6) — a third, mutually-exclusive
+    // depth-1 destination. Folded in from trd-review: the bidirectional
+    // mutual-exclusivity claim only held in one direction before this pass —
+    // `openEvent` already cleared `hood`/`place`, but `openHood`/`openPlace`
+    // didn't clear `event` back.
+
+    @Test("openEvent presents depth 1, with placeDepth still nil — events don't participate in place depth")
+    func openEventIsDepth1() {
+        let router = DetailRouter()
+        router.openEvent(Self.makeEvent(id: "concert"))
+        #expect(router.event != nil)
+        #expect(router.placeDepth == nil)
+        #expect(router.isDepth1Presented.wrappedValue)
+    }
+
+    @Test("openEvent clears any open hood and place — an event replaces whatever was open")
+    func openEventClearsHoodAndPlace() {
+        let router = DetailRouter()
+        router.openHood(Self.makeHood(id: "florentin"))
+        router.openPlace(Self.makePlace(id: "cafe", hoodID: "florentin"))
+        router.openEvent(Self.makeEvent(id: "concert"))
+        #expect(router.hood == nil)
+        #expect(router.place == nil)
+        #expect(router.event != nil)
+    }
+
+    @Test("openHood clears an open event — the fold-in fix: mutual exclusivity now holds in both directions")
+    func openHoodClearsEvent() {
+        let router = DetailRouter()
+        router.openEvent(Self.makeEvent(id: "concert"))
+        router.openHood(Self.makeHood(id: "florentin"))
+        #expect(router.event == nil)
+        #expect(router.hood != nil)
+    }
+
+    @Test("openPlace (as a new depth-1 destination) clears an open event")
+    func openPlaceClearsEvent() {
+        let router = DetailRouter()
+        router.openEvent(Self.makeEvent(id: "concert"))
+        router.openPlace(Self.makePlace(id: "cafe", hoodID: "florentin"))
+        #expect(router.event == nil)
+        #expect(router.place != nil)
+    }
+
+    @Test("closeEvent clears only the event")
+    func closeEventClearsOnlyEvent() {
+        let router = DetailRouter()
+        router.openEvent(Self.makeEvent(id: "concert"))
+        router.closeEvent()
+        #expect(router.event == nil)
+        #expect(!router.isDepth1Presented.wrappedValue)
+    }
+
+    @Test("closeHood also clears an open event — isDepth1Presented's false-write path routes through closeHood")
+    func closeHoodClearsEvent() {
+        let router = DetailRouter()
+        router.openEvent(Self.makeEvent(id: "concert"))
+        router.closeHood()
+        #expect(router.event == nil)
+    }
+
+    @Test("writing false to isDepth1Presented clears an open event, same as it clears hood/place")
+    func depth1BindingDismissClearsEvent() {
+        let router = DetailRouter()
+        router.openEvent(Self.makeEvent(id: "concert"))
+        router.isDepth1Presented.wrappedValue = false
+        #expect(router.event == nil)
+        #expect(!router.isDepth1Presented.wrappedValue)
+    }
+
+    @Test("openEvent is idempotent for the same value — both the marker's Button and the map's SpatialTapGesture can call it for one tap")
+    func openEventIdempotentForSameValue() {
+        let router = DetailRouter()
+        let event = Self.makeEvent(id: "concert")
+        router.openEvent(event)
+        router.openEvent(event)
+        #expect(router.event == event)
+        #expect(router.isDepth1Presented.wrappedValue)
     }
 }
