@@ -24,7 +24,9 @@ enum EventSeed {
             let sourceName: String?
 
             enum CodingKeys: String, CodingKey {
-                case id, name, latitude, longitude, rank, category
+                case id, name, rank, category
+                case latitude = "lat"
+                case longitude = "lng"
                 case startOffsetMinutes = "start_offset_minutes"
                 case durationMinutes = "duration_minutes"
                 case venueName = "venue_name"
