@@ -82,6 +82,7 @@ struct PassportSurface: View {
             Text("Passport")
                 .font(.title2.bold())
                 .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("passportSurfaceTitle")
             Spacer()
             closeButton
         }

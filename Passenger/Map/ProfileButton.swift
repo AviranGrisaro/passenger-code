@@ -6,13 +6,15 @@ import SwiftUI
 /// z7, icon-only, no caption (`ux-flows.md`'s 2026-08-02 founder-direct
 /// addendum, T-032's D6 states the same rule for the heat button).
 ///
-/// **Not wired into `MapNavRow` here.** `MapNavRow.swift` does not exist yet
-/// — T-032's own C2 has not landed in this working tree — and TRD §11 C7
-/// blocks on that step and explicitly forbids creating the container file
-/// from this task. This view is built to the contract C2's container will
-/// host it in; landing C2 adds one call site to `MapNavRow`'s row of
-/// buttons, not a new component.
+/// **Wired into `MapNavRow`** — landed once `MapNavRow.swift` existed
+/// (T-038's build) and settled, per this file's own original comment
+/// ("landing C2 adds one call site... not a new component") and TRD §11
+/// C7. `isPresented` mirrors `SearchButton`'s own parameter: same
+/// `.isSelected` accessibility signal while its surface is open, no visual
+/// difference beyond that (D10 — nothing in Passport is tappable, so there
+/// is no "active" look to design beyond VoiceOver state).
 struct ProfileButton: View {
+    let isPresented: Bool
     let action: () -> Void
 
     var body: some View {
@@ -26,5 +28,6 @@ struct ProfileButton: View {
                 .frame(width: 44, height: 44)  // Fitts's Law minimum (design-principles.md §2)
         }
         .accessibilityLabel("Profile")
+        .accessibilityAddTraits(isPresented ? [.isSelected] : [])
     }
 }

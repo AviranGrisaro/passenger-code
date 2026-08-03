@@ -325,7 +325,9 @@ struct MapScreen: View {
             // this file's overlays so it renders above all of them.
             MapNavRow(
                 isSearchPresented: chrome.presented == .search,
-                onSearchTap: handleSearchButtonTap
+                onSearchTap: handleSearchButtonTap,
+                isPassportPresented: chrome.presented == .profile,
+                onProfileTap: openPassport
             )
             .padding(.bottom, 96)
         }
@@ -569,17 +571,22 @@ struct MapScreen: View {
     // MARK: - passport (T-037) presentation wiring — same construction as
     // `openPlacesList` above, pure/testable (TRD §4.6, §9 row 2, §11 C11).
 
-    /// `ProfileButton`'s eventual action (TRD §2.4, §4.6) — not yet called
-    /// from any live button (§11 C7 is blocked on T-032's `MapNavRow`, not
-    /// built here), but the open-path plumbing §9 row 2(c) checks is built
-    /// and tested regardless, so wiring the button in later is one call
-    /// site, not new logic. Closing the Hood sheet first for the same
-    /// reason as `openPlacesList`: a tap must not present Passport
-    /// *underneath* a still-open system sheet, in a layer that can never be
-    /// reached.
+    /// `ProfileButton`'s action (TRD §2.4, §4.6), wired into `MapNavRow`
+    /// below (§11 C7) — the one call site this function's open-path
+    /// plumbing was always built and tested (§9 row 2(c)) for. Closing the
+    /// Hood sheet first for the same reason as `openPlacesList`: a tap must
+    /// not present Passport *underneath* a still-open system sheet, in a
+    /// layer that can never be reached. `chrome.toggle(.profile)` alone
+    /// handles the re-tap-to-close case (`PassportWiringTests
+    /// .openPassportTogglesClosedWhenAlreadyOpen`), so unlike search there
+    /// is no separate dismiss function to route through.
     static func openPassport(router: DetailRouter, chrome: MapChromeState) {
         router.closeHood()
         chrome.toggle(.profile)
+    }
+
+    private func openPassport() {
+        Self.openPassport(router: detailRouter, chrome: chrome)
     }
 
     // No `.profile`-leaving analogue to `handlePresentedSurfaceChange` above:
