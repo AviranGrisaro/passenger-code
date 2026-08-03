@@ -1,6 +1,7 @@
 import CoreLocation
 import MapKit
 import SwiftUI
+import UIKit
 
 /// The app's single screen (TRD §2.1). Owns the camera and composes
 /// `Hoods/` geometry with `Density/` bands — the only layer that knows both
@@ -37,7 +38,29 @@ struct MapScreen: View {
         )
     }
 
+    /// UI-test-only camera exposure (TRD §9 row 7e / C13 — the check the
+    /// TRD requires before that step can be called done: `MKCoordinateRegion`
+    /// byte-identical across an in-band vertical edge drag, "the same
+    /// comparison method §9 row 2c already uses"). Neither `camera` nor
+    /// `MKCoordinateRegion` is otherwise observable from an XCUITest
+    /// process — this is the same class of test-only seam as
+    /// `-uiTestZoomedIn` above, gated behind its own launch argument so it
+    /// carries zero cost/behaviour in a real launch. **[ASSUMPTION]**: the
+    /// TRD specifies the comparison, not the exposure mechanism — this is
+    /// this task's own construction for it, flagged for `ios-code-reviewer`
+    /// to confirm rather than assumed correct by construction alone.
+    private static let isExposingCameraRegionForTests = ProcessInfo.processInfo.arguments.contains("-uiTestExposeCameraRegion")
+
+    private static func regionDump(_ region: MKCoordinateRegion) -> String {
+        String(
+            format: "%.8f,%.8f,%.8f,%.8f",
+            region.center.latitude, region.center.longitude,
+            region.span.latitudeDelta, region.span.longitudeDelta
+        )
+    }
+
     @State private var camera: MapCameraPosition = .region(initialCameraRegion)
+    @State private var cameraRegionDump: String = ""
     @State private var hoods: [Hood] = []
     @State private var hitTester = HoodHitTester(hoods: [])
     /// The single derivation of zoom from span (tourist-trap-flag TRD §2.2,
@@ -60,6 +83,13 @@ struct MapScreen: View {
     @State private var densityStore = DensityStore()
     @State private var locationStore = LocationStore()
     @State private var permissionPrompt: PermissionPrompt?
+
+    /// The live in-progress edge drag, or `nil` between drags (TRD §4.8).
+    /// Drives `EdgeHourTrack`'s presence and position — mutually exclusive
+    /// with any presented `NavSurface`/sheet by construction, since
+    /// `EdgeHourZone` (the only writer) isn't in the hierarchy in either
+    /// state (§2.3, §4.10).
+    @State private var edgeDrag: EdgeDragState?
 
     // T-033: place/Hood detail (TRD §2.1). One session-scoped catalog, one
     // router, read by both sheets and the pin layer — no per-sheet fetch.
@@ -98,6 +128,37 @@ struct MapScreen: View {
     /// than naming the nearest one by distance (TRD §4.7).
     private var nearestHood: Hood? {
         hitTester.hood(at: cameraCenterPoint, tolerance: 0)
+    }
+
+    /// A `Binding` into `densityStore.selectedHour` (TRD §4.3) — there is
+    /// exactly one storage location for the hour in the entire app; this is
+    /// how both `HourSlider` and `EdgeHourZone` write to it without either
+    /// gaining a second, private copy.
+    private var selectedHourBinding: Binding<Int> {
+        Binding(get: { densityStore.selectedHour }, set: { densityStore.selectedHour = $0 })
+    }
+
+    /// The formatted readout for whichever hour is currently selected (TRD
+    /// §3.2, §4.4) — read fresh on every render pass, `.current` calendar,
+    /// real wall clock, never cached.
+    private var currentReadout: HourFormat.Readout {
+        HourFormat.readout(
+            offset: densityStore.selectedHour, anchorHour: densityStore.anchorHour, now: Date(), calendar: .current
+        )
+    }
+
+    /// One resolution per render pass through `HeatComposition` (TRD §4.7),
+    /// instead of calling `densityStore.band(...)` inline per Hood — this is
+    /// the repaint's single nameable completion point, so
+    /// `HeatRepaintSignpost.endIfPending()` has one place to be called from
+    /// regardless of which writer (`HourSlider` or `EdgeHourZone`) started
+    /// the interval.
+    private var hoodFills: [HoodFill] {
+        let fills = HeatComposition.fills(hoods: hoods, hour: densityStore.selectedHour) { hoodID, hour in
+            densityStore.band(for: hoodID, hour: hour)
+        }
+        HeatRepaintSignpost.endIfPending()
+        return fills
     }
 
     /// The Places list's read-time precedence merge (places-been-saved TRD
@@ -160,12 +221,12 @@ struct MapScreen: View {
     var body: some View {
         MapReader { proxy in
             Map(position: $camera) {
-                ForEach(hoods) { hood in
+                ForEach(hoodFills, id: \.hood.id) { fill in
                     HoodLayer(
-                        hood: hood,
-                        band: densityStore.band(for: hood.id, hour: densityStore.selectedHour),
+                        hood: fill.hood,
+                        band: fill.band,
                         zoomTier: zoomTier,
-                        isDimmed: isHoodDimmed(hood)
+                        isDimmed: isHoodDimmed(fill.hood)
                     )
                 }
                 // T-033: the minimal pin layer (TRD §1.2, §4.5, D5). Tapping
@@ -215,6 +276,9 @@ struct MapScreen: View {
             .onMapCameraChange { context in
                 zoomTier = MapZoomTier.tier(forLatitudeDelta: context.region.span.latitudeDelta)
                 cameraCenterPoint = MKMapPoint(context.region.center)
+                if Self.isExposingCameraRegionForTests {
+                    cameraRegionDump = Self.regionDump(context.region)
+                }
             }
             .simultaneousGesture(
                 // FB19394663 (iOS 26 known issue): `.onTapGesture` does not
@@ -240,6 +304,25 @@ struct MapScreen: View {
             }
         }
         .overlay {
+            // UI-test-only (see `isExposingCameraRegionForTests` above) —
+            // never present in a real launch. `selectedHourDebugDump` is
+            // the same seam's other half: §9 row 7e's pass condition needs
+            // both "camera unchanged" and "selectedHour moved" observable
+            // from the same XCUITest process.
+            if Self.isExposingCameraRegionForTests {
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .accessibilityElement()
+                    .accessibilityIdentifier("cameraRegionDebugDump")
+                    .accessibilityValue(cameraRegionDump)
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .accessibilityElement()
+                    .accessibilityIdentifier("selectedHourDebugDump")
+                    .accessibilityValue(String(densityStore.selectedHour))
+            }
+        }
+        .overlay {
             // z3 (TRD §2.3/D3): the tap-catcher, `.search`-only in this
             // tree today. Opacity 0, still hit-testing — keeps tap-outside
             // dismissal and stops a stray map tap opening a Hood sheet
@@ -259,18 +342,37 @@ struct MapScreen: View {
                     .accessibilityHidden(true)
             }
         }
+        .overlay(alignment: .leading) {
+            // z1 (`EdgeHint`) + z2 (`EdgeHourZone`) for the leading edge,
+            // combined into one per-edge layer function (TRD §2.3, §4.8,
+            // §4.9). `EdgeHourTrack` (z6) also lives here rather than at
+            // its own later position in this chain — it only renders while
+            // `edgeDrag` is non-nil, which can only happen while
+            // `EdgeHourZone` is actually in the hierarchy, which itself
+            // requires nothing to be presented (§4.10) — so z6 and z5 are
+            // mutually exclusive by construction and their relative
+            // position in this modifier chain has no visible effect.
+            edgeLayer(for: .leading)
+        }
+        .overlay(alignment: .trailing) {
+            edgeLayer(for: .trailing)
+        }
         .overlay(alignment: .bottom) {
+            // Bucket-2 chrome (T-032 TRD §2.3): `NearMeButton`, `HoodButton`
+            // and `SettingsHint` all fade to invisible and stop accepting
+            // taps while any `NavSurface` is presented — the near-me
+            // cluster moved up out of the nav row's own band for exactly
+            // this reason (D1). `PlacesButton` already carries this
+            // treatment internally (`isFaded:`); the other three get it
+            // here rather than each growing a bespoke parameter, since none
+            // of them is used anywhere else in the app. Reduce Motion
+            // honoured via the same `withAnimation` that already governs
+            // `settingsHintVisible`'s own fade.
             VStack(spacing: 8) {
                 if settingsHintVisible {
                     SettingsHint()
                         .transition(.opacity)
                 }
-                // The second door to a Hood's detail sheet (TRD §1.2, §4.7),
-                // visible at exactly the zoom `showsNames` already gates.
-                // Bucket-2 chrome once T-032's own build wires this button
-                // into the `chrome`/fade mechanism `MapChromeState` now
-                // provides (TRD §4.7) — out of scope for this file's own
-                // task, so not fabricated ahead of it here.
                 if showsNames, let nearestHood {
                     HoodButton(hoodName: nearestHood.name) {
                         detailRouter.openHood(nearestHood)
@@ -286,12 +388,23 @@ struct MapScreen: View {
                 }
             }
             .padding(.bottom, 32)
+            .opacity(chrome.isPresenting ? 0 : 1)
+            .allowsHitTesting(!chrome.isPresenting)
         }
         .overlay {
             // z5 (TRD §2.4/§4.5). Above bucket-2 chrome, below the system
             // sheet at Site A — a `.sheet` always presents above the whole
             // hierarchy regardless of modifier order.
-            if chrome.presented == .places {
+            if chrome.presented == .heat {
+                // T-032 TRD §4.2, D2, D4. Owns its own scrim, mirroring
+                // `PlacesListOverlay`/`PassportSurface` — both of those
+                // views cite this type as the pattern they mirror.
+                HeatModalCard(
+                    selectedHour: selectedHourBinding,
+                    readout: currentReadout,
+                    onDismiss: { chrome.dismiss() }
+                )
+            } else if chrome.presented == .places {
                 PlacesListOverlay(
                     entries: placesListEntries,
                     onSelect: { place in detailRouter.openPlace(place) },
@@ -324,6 +437,8 @@ struct MapScreen: View {
             // covered by this file's own z3/z4/z5 layers — drawn last among
             // this file's overlays so it renders above all of them.
             MapNavRow(
+                isHeatPresented: chrome.presented == .heat,
+                onHeatTap: handleHeatButtonTap,
                 isSearchPresented: chrome.presented == .search,
                 onSearchTap: handleSearchButtonTap,
                 isPassportPresented: chrome.presented == .profile,
@@ -450,6 +565,37 @@ struct MapScreen: View {
         let isAuthorized = newStatus == .authorizedWhenInUse || newStatus == .authorizedAlways
         return !wasAuthorized && isAuthorized
     }
+
+    // MARK: - T-032 heat modal presentation wiring — same construction as
+    // `openPlacesList`/`openPassport` below: a pure/testable static function
+    // over the two objects it touches (TRD §4.1, §5).
+
+    /// `HeatButton`'s action. Closes any open Hood sheet first, for the same
+    /// reason `openPlacesList`/`openSearch`/`openPassport` do — D4 requires
+    /// the modal and a system sheet never be co-presented in either
+    /// direction. `chrome.toggle(.heat)` alone handles the re-tap-to-close
+    /// case, so unlike search there is no separate dismiss function.
+    static func openHeat(router: DetailRouter, chrome: MapChromeState) {
+        router.closeHood()
+        chrome.toggle(.heat)
+    }
+
+    private func handleHeatButtonTap() {
+        Self.openHeat(router: detailRouter, chrome: chrome)
+        if chrome.presented == .heat {
+            // D3, §4.5 item 2: re-anchor "now" on modal open — the second
+            // of the two new `refreshIfHourRolled()` call sites this task
+            // adds, alongside `EdgeHourZone`'s touch-down. Only fires when
+            // the toggle above just *opened* the modal, never when it
+            // closed an already-open one.
+            Task { await densityStore.refreshIfHourRolled() }
+        }
+    }
+
+    // No `.heat`-leaving analogue to `handlePresentedSurfaceChange` below:
+    // like Passport, the heat modal has no tappable row that opens a place
+    // or Hood destination, so there is structurally nothing for a
+    // leave-hook to clean up.
 
     // MARK: - places-been-saved (T-036) presentation wiring — pure/testable,
     // same construction as `isNewGrant` above: the side effect lives in a
@@ -688,6 +834,77 @@ struct MapScreen: View {
         @unknown default:
             showSettingsHintTemporarily()
         }
+    }
+
+    // MARK: - T-032 edge-hour gesture surface (TRD §2.3, §4.8–§4.10)
+
+    /// One live edge's `EdgeHint`/`EdgeHourZone`/`EdgeHourTrack`, combined
+    /// (TRD §2.1's module layout, §2.3's z-table). A `GeometryReader` sized
+    /// to `EdgeGeometry.captureWidth` and the full screen height gives
+    /// `EdgeGeometry.band(in:safeArea:)` exactly the coordinate space
+    /// `EdgeHourZone`'s `DragGesture` reports touches in (§4.8's default
+    /// `.local`), so no conversion is needed anywhere in this feature.
+    ///
+    /// **Known limitation, disclosed rather than silent:** this
+    /// `GeometryReader` sits inside the same modifier chain as this file's
+    /// own `.ignoresSafeArea()` (applied to the `Map` above), and every
+    /// other bottom-chrome element in this file already works around the
+    /// same effect by hardcoding a padding value instead of reading a live
+    /// `safeAreaInsets` (`ColdOpenTitle`'s `.padding(.top, 56)`,
+    /// `MapNavRow`'s `.padding(.bottom, 96)`) — `GeometryProxy
+    /// .safeAreaInsets` read here may report `0` rather than the device's
+    /// real inset. `EdgeGeometry.band(in:safeArea:)`'s
+    /// `max(floor, safeAreaInset + clearance)` formula means this is
+    /// numerically correct on every current device regardless (the floor
+    /// already equals the real worst-case inset + clearance, TRD §4.9 D8),
+    /// but D8's own stated purpose — staying correct automatically on a
+    /// *future* device with a larger inset — is not verified end-to-end
+    /// here. Flagged for `ios-code-reviewer`/`qa` to confirm on a device
+    /// with a non-floor safe area, rather than assumed.
+    @ViewBuilder
+    private func edgeLayer(for edge: HorizontalEdge) -> some View {
+        GeometryReader { geometry in
+            let isPortrait = geometry.size.height > geometry.size.width
+            let idiom = UIDevice.current.userInterfaceIdiom
+            let isAnySheetPresented = detailRouter.isDepth1Presented.wrappedValue
+            let liveEdges = EdgeAvailability.liveEdges(
+                idiom: idiom,
+                isPortrait: isPortrait,
+                isAnySurfacePresented: chrome.isPresenting,
+                isAnySheetPresented: isAnySheetPresented
+            )
+            let band = EdgeGeometry.band(in: geometry.size, safeArea: geometry.safeAreaInsets)
+            let midY = (band.lowerBound + band.upperBound) / 2
+
+            ZStack(alignment: .topLeading) {
+                if liveEdges.contains(edge) {
+                    if edgeDrag == nil {
+                        EdgeHint(edge: edge, band: band)
+                            .position(x: EdgeGeometry.captureWidth / 2, y: midY)
+                    }
+                    EdgeHourZone(
+                        edge: edge,
+                        band: band,
+                        selectedHour: selectedHourBinding,
+                        activeDrag: $edgeDrag,
+                        onTouchDown: {
+                            Task { await densityStore.refreshIfHourRolled() }
+                        }
+                    )
+                } else if edge == .trailing, idiom == .pad, !chrome.isPresenting, !isAnySheetPresented {
+                    // iPad's right edge is permanently excluded (system
+                    // Slide Over, Q2) — a ghost mark explains the absence
+                    // rather than reading as a missed build (§4.11).
+                    EdgeHintGhostMark()
+                        .position(x: EdgeGeometry.captureWidth / 2, y: midY)
+                }
+
+                if let edgeDrag, edgeDrag.edge == edge {
+                    EdgeHourTrack(state: edgeDrag, band: band, readout: currentReadout)
+                }
+            }
+        }
+        .frame(width: EdgeGeometry.captureWidth)
     }
 
     private func showSettingsHintTemporarily() {

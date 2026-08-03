@@ -5,19 +5,7 @@ import UIKit
 /// timing; this view is the static presentation.
 struct SettingsHint: View {
     var body: some View {
-        (
-            Text("Location is off. Turn it on in ")
-                .foregroundStyle(.primary)
-            + Text("Settings")
-                // Semantic asset color, light/dark variants — never a mockup hex
-                // (TRD §8 D1). Underlined too, so the affordance survives
-                // never-color-alone (design-principles.md §3) regardless of
-                // whether the token itself is ever wrong.
-                .foregroundStyle(Color("LinkOnSurface"))
-                .underline()
-            + Text(" to use Near Me.")
-                .foregroundStyle(.primary)
-        )
+        Text("Location is off. Turn it on in \(settingsLink) to use Near Me.")
         .font(.footnote)
         .multilineTextAlignment(.center)
         .padding(.horizontal, 14)
@@ -30,6 +18,16 @@ struct SettingsHint: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityHint("Opens Settings")
+    }
+
+    private var settingsLink: Text {
+        Text("Settings")
+            // Semantic asset color, light/dark variants — never a mockup hex
+            // (TRD §8 D1). Underlined too, so the affordance survives
+            // never-color-alone (design-principles.md §3) regardless of
+            // whether the token itself is ever wrong.
+            .foregroundStyle(Color("LinkOnSurface"))
+            .underline()
     }
 
     private func openSettings() {

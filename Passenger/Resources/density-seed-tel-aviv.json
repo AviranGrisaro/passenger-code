@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "hoods": [
+    {
+      "hood_id": "florentin",
+      "bands": [2, 2, 3, 3, 2, 2, 1, 1, 2, 2, 3, 3, 2]
+    },
+    {
+      "hood_id": "kerem-hateimanim",
+      "bands": [1, 1, 2, 2, 3, 3, 3, 2, 2, 1, 1, 1, 1]
+    },
+    {
+      "hood_id": "neve-tzedek",
+      "bands": [3, 2, 2, 1, 1, 1, 2, 2, 3, 3, 3, 2, 2]
+    },
+    {
+      "hood_id": "lev-hair",
+      "bands": [2, 3, 3, 3, 2, 2, 1, 1, 1, 2, 2, 3, 3]
+    },
+    {
+      "hood_id": "old-north",
+      "bands": [1, 1, 1, null, null, 2, 2, 2, 3, 3, 2, 1, 1]
+    }
+  ]
+}
