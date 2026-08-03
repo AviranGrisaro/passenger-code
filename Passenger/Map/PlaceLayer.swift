@@ -14,7 +14,15 @@ import SwiftUI
 struct PlaceLayer: MapContent {
     let place: Place
     let isListed: Bool
+    /// search-quick-filters TRD §4.10, D4/D12 — `false` renders
+    /// byte-identically to this layer's pre-existing output. Independent of
+    /// `isListed`: a dimmed pin keeps its personal-place ring at the same
+    /// reduced opacity as the rest of it, since no requirement makes the
+    /// ring depend on whether a search is open.
+    let isDimmed: Bool
     let action: () -> Void
+
+    private var dimOpacity: Double { isDimmed ? 0.25 : 1 }
 
     var body: some MapContent {
         Annotation(place.name, coordinate: place.coordinate) {
@@ -34,6 +42,7 @@ struct PlaceLayer: MapContent {
                         ring
                     }
                 }
+                .opacity(dimOpacity)
             }
             .accessibilityLabel(pinLabel)
             // Stable, locale-independent hook for UI tests (T-033/PAS-13 fix

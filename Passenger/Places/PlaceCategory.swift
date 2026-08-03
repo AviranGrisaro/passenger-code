@@ -3,7 +3,7 @@
 /// carrying one is dropped at the network/seed boundary rather than mapped to
 /// a default (PRD req 6). Display strings live only on `displayName`; nothing
 /// else in the app is allowed to spell out "Eat & Drink" or "Things to do".
-enum PlaceCategory: String, Sendable, CaseIterable, Codable {
+enum PlaceCategory: String, Sendable, CaseIterable, Codable, Hashable {
     case eatDrink = "eat-drink"
     case thingsToDo = "things-to-do"
 
