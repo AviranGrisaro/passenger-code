@@ -29,6 +29,7 @@ struct PlaceHitTesterTests {
             hoodID: "florentin",
             coordinate: MKMapPoint(x: anchor.x + dx, y: anchor.y + dy).coordinate,
             permanentlyClosed: false,
+            placeType: "cafe",
             isTouristTrap: nil
         )
     }

@@ -11,7 +11,9 @@
       "latitude": 32.0531,
       "longitude": 34.7623,
       "permanently_closed": false,
-      "is_tourist_trap": true
+      "place_type": "cafe",
+      "is_tourist_trap": true,
+      "keywords": ["coffee", "pastries"]
     },
     {
       "id": "florentin-museum",
@@ -21,7 +23,9 @@
       "latitude": 32.0553,
       "longitude": 34.7645,
       "permanently_closed": true,
-      "is_tourist_trap": false
+      "place_type": "museum",
+      "is_tourist_trap": false,
+      "keywords": ["art", "exhibits"]
     },
     {
       "id": "orphan-place",
@@ -30,7 +34,9 @@
       "hood_id": "no-such-hood",
       "latitude": 32.1000,
       "longitude": 34.8000,
-      "permanently_closed": false
+      "permanently_closed": false,
+      "place_type": "bar",
+      "keywords": []
     },
     {
       "id": "bad-category-place",
@@ -39,7 +45,9 @@
       "hood_id": "florentin",
       "latitude": 32.0540,
       "longitude": 34.7630,
-      "permanently_closed": false
+      "permanently_closed": false,
+      "place_type": "restaurant",
+      "keywords": ["misc"]
     },
     {
       "id": "bad-coordinate-place",
@@ -48,7 +56,9 @@
       "hood_id": "florentin",
       "latitude": 999,
       "longitude": 34.7630,
-      "permanently_closed": false
+      "permanently_closed": false,
+      "place_type": "landmark",
+      "keywords": ["misc"]
     }
   ]
 }

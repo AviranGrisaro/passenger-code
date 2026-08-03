@@ -90,7 +90,8 @@ struct MapScreenD8WiringTests {
         chrome.toggle(.places)
         router.openPlace(Place(
             id: "cafe", name: "cafe", category: .eatDrink, hoodID: "florentin",
-            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0), permanentlyClosed: false, isTouristTrap: nil
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0), permanentlyClosed: false,
+            placeType: "cafe", isTouristTrap: nil
         ))
 
         let oldValue = chrome.presented
@@ -106,7 +107,8 @@ struct MapScreenD8WiringTests {
         let router = DetailRouter()
         router.openPlace(Place(
             id: "cafe", name: "cafe", category: .eatDrink, hoodID: "florentin",
-            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0), permanentlyClosed: false, isTouristTrap: nil
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0), permanentlyClosed: false,
+            placeType: "cafe", isTouristTrap: nil
         ))
 
         MapScreen.handlePresentedSurfaceChange(from: nil, to: .places, router: router)
@@ -119,7 +121,8 @@ struct MapScreenD8WiringTests {
         let router = DetailRouter()
         router.openPlace(Place(
             id: "cafe", name: "cafe", category: .eatDrink, hoodID: "florentin",
-            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0), permanentlyClosed: false, isTouristTrap: nil
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0), permanentlyClosed: false,
+            placeType: "cafe", isTouristTrap: nil
         ))
 
         MapScreen.handlePresentedSurfaceChange(from: .places, to: nil, router: router)

@@ -47,10 +47,15 @@ struct PlaceTouristTrapDecodeTests {
 
     // MARK: - Live path (`PlacesAPI.PlaceRow`, built to spec, unexercised in Phase 1)
 
+    // `place_type` and `keywords` are also required on every JSON literal
+    // below (passport TRD §3.2, D2; search-quick-filters TRD §3.2) —
+    // present throughout so these tests still isolate `is_tourist_trap`,
+    // not an unrelated decode failure.
+
     @Test("a live payload's PlaceRow decodes is_tourist_trap: true")
     func liveDecodeTrue() throws {
         let json = """
-        [{"id":"a","name":"A","category":"eat-drink","latitude":32.05,"longitude":34.77,"permanently_closed":false,"is_tourist_trap":true}]
+        [{"id":"a","name":"A","category":"eat-drink","latitude":32.05,"longitude":34.77,"permanently_closed":false,"place_type":"cafe","is_tourist_trap":true,"keywords":[]}]
         """.data(using: .utf8)!
         let rows = try JSONDecoder().decode([PlacesAPI.PlaceRow].self, from: json)
         #expect(rows.first?.isTouristTrap == true)
@@ -59,7 +64,7 @@ struct PlaceTouristTrapDecodeTests {
     @Test("a live payload's PlaceRow with a missing is_tourist_trap key decodes to nil, not a decode failure")
     func liveDecodeMissingKeyIsNil() throws {
         let json = """
-        [{"id":"a","name":"A","category":"eat-drink","latitude":32.05,"longitude":34.77,"permanently_closed":false}]
+        [{"id":"a","name":"A","category":"eat-drink","latitude":32.05,"longitude":34.77,"permanently_closed":false,"place_type":"cafe","keywords":[]}]
         """.data(using: .utf8)!
         let rows = try JSONDecoder().decode([PlacesAPI.PlaceRow].self, from: json)
         #expect(rows.first?.isTouristTrap == nil)
@@ -68,7 +73,7 @@ struct PlaceTouristTrapDecodeTests {
     @Test("a live payload's PlaceRow with an explicit null decodes to nil")
     func liveDecodeExplicitNullIsNil() throws {
         let json = """
-        [{"id":"a","name":"A","category":"eat-drink","latitude":32.05,"longitude":34.77,"permanently_closed":false,"is_tourist_trap":null}]
+        [{"id":"a","name":"A","category":"eat-drink","latitude":32.05,"longitude":34.77,"permanently_closed":false,"place_type":"cafe","is_tourist_trap":null,"keywords":[]}]
         """.data(using: .utf8)!
         let rows = try JSONDecoder().decode([PlacesAPI.PlaceRow].self, from: json)
         #expect(rows.first?.isTouristTrap == nil)
@@ -80,7 +85,8 @@ struct PlaceTouristTrapDecodeTests {
     func cacheRoundTripsIsTouristTrap() throws {
         let cached = PlacesCache.CachedPlace(
             id: "a", name: "A", category: "eat-drink", hoodID: "florentin",
-            latitude: 32.05, longitude: 34.77, permanentlyClosed: false, isTouristTrap: true
+            latitude: 32.05, longitude: 34.77, permanentlyClosed: false, placeType: "cafe", isTouristTrap: true,
+            keywords: []
         )
         let payload = PlacesCache.Payload(places: [cached], hoodBlurbs: [:])
         let data = try JSONEncoder().encode(payload)
@@ -90,8 +96,11 @@ struct PlaceTouristTrapDecodeTests {
 
     @Test("a cached place missing isTouristTrap decodes to nil, never a decode failure — an older cache file predates this field")
     func cacheMissingFieldIsNil() throws {
+        // `placeType` and `keywords` are also required — present here so
+        // this test still isolates `isTouristTrap`, not an unrelated decode
+        // failure.
         let json = """
-        {"places":[{"id":"a","name":"A","category":"eat-drink","hoodID":"florentin","latitude":32.05,"longitude":34.77,"permanentlyClosed":false}],"hoodBlurbs":{}}
+        {"places":[{"id":"a","name":"A","category":"eat-drink","hoodID":"florentin","latitude":32.05,"longitude":34.77,"permanentlyClosed":false,"placeType":"cafe","keywords":[]}],"hoodBlurbs":{}}
         """.data(using: .utf8)!
         let payload = try JSONDecoder().decode(PlacesCache.Payload.self, from: json)
         #expect(payload.places.first?.isTouristTrap == nil)

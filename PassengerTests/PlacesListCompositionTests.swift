@@ -27,7 +27,7 @@ struct PlacesListCompositionTests {
         Place(
             id: id, name: name, category: .eatDrink, hoodID: "florentin",
             coordinate: CLLocationCoordinate2D(latitude: 32.05, longitude: 34.77),
-            permanentlyClosed: closed, isTouristTrap: nil
+            permanentlyClosed: closed, placeType: "cafe", isTouristTrap: nil
         )
     }
 

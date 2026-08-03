@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "_note": "Test fixture only (PassportCompositionTests, PlaceTypeRegistryTests) — not A1's real content.",
+  "types": {
+    "cafe": "circle",
+    "bar": "diamond"
+  }
+}

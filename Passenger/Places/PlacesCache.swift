@@ -29,11 +29,22 @@ actor PlacesCache: PlacesCaching {
         /// designed fallback) — no cache migration needed, and Build Phase
         /// 1 never writes this file at all, so no shipped device holds one.
         let permanentlyClosed: Bool
+        /// passport TRD §3.2, D2 — non-optional, mirrors `Place.placeType`.
+        /// An older cache file written before this field existed fails to
+        /// decode as a whole and falls through to the seed, same as
+        /// `permanentlyClosed` above — no cache migration needed.
+        let placeType: String
         /// tourist-trap-flag TRD §3.1, §11 C6 — mirrors `Place.isTouristTrap`
         /// so a cached place doesn't silently lose its flag. `var ... = nil`,
         /// not `let` — see `PlacesAPI.PlaceRow`'s identical field for why a
         /// `let` default would silently defeat `Decodable` here.
         var isTouristTrap: Bool? = nil
+        /// search-quick-filters TRD §3.2 — non-optional, mirrors
+        /// `Place.keywords`. An older cache file written before this field
+        /// existed fails to decode as a whole and falls through to the seed,
+        /// same as `permanentlyClosed`/`placeType` above — no cache
+        /// migration needed, and Build Phase 1 never writes this file at all.
+        let keywords: [String]
     }
 
     struct Payload: Codable, Sendable {

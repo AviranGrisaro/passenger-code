@@ -75,6 +75,13 @@ struct MapScreen: View {
     @State private var visitedPlacesStore = VisitedPlacesStore()
     @State private var chrome = MapChromeState()
 
+    // search-quick-filters (T-038): the session-scoped query/chip state
+    // (TRD §4.6) and the derived index (§3.3, §4.2) — rebuilt off the
+    // cold-open path once both catalogs resolve (`onChange` below), never
+    // persisted.
+    @State private var searchSession = SearchSession()
+    @State private var searchIndex = SearchIndex.empty
+
     // T-034: the live-events overlay (TRD §2.1). One session-scoped store,
     // read by both the map layer and `handleTap` — no per-marker fetch.
     @State private var eventStore = EventStore()
@@ -118,6 +125,36 @@ struct MapScreen: View {
         )
     }
 
+    // T-037: Passport's read-time composition (TRD §4.1, §11 C11) — pure
+    // functions over already-loaded data, run once per render pass, never a
+    // per-open fetch. `registry: .shared` is the bundled, synchronous
+    // `PlaceTypeRegistry` (TRD §3.4) — no `.task` loads it.
+    private var passportStickers: [PassportSticker] {
+        PassportComposition.stickers(
+            places: placeCatalog.allPlaces, visits: visitedPlacesStore.visits, registry: .shared
+        )
+    }
+
+    private var passportProgress: [HoodProgress] {
+        PassportComposition.progress(hoods: hoods, places: placeCatalog.allPlaces, visits: visitedPlacesStore.visits)
+    }
+
+    /// search-quick-filters TRD §4.9 — a computed property, not stored
+    /// state: it reads `searchSession`/`searchIndex` fresh on every render
+    /// pass, so the result list and the map dim can never go out of step
+    /// with each other or with a stale query.
+    private var searchResults: [SearchResult] {
+        SearchQuery.run(searchSession.text, filter: searchSession.filter, in: searchIndex)
+    }
+
+    /// search-quick-filters TRD §4.10 — `nil` whenever `.search` isn't
+    /// presented (this half of the rule) or the result set is empty
+    /// (`SearchDim`'s own half).
+    private var searchEmphasis: (places: Set<Place.ID>, hoods: Set<Hood.ID>)? {
+        guard chrome.presented == .search else { return nil }
+        return SearchDim.emphasis(results: searchResults)
+    }
+
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -127,7 +164,8 @@ struct MapScreen: View {
                     HoodLayer(
                         hood: hood,
                         band: densityStore.band(for: hood.id, hour: densityStore.selectedHour),
-                        zoomTier: zoomTier
+                        zoomTier: zoomTier,
+                        isDimmed: isHoodDimmed(hood)
                     )
                 }
                 // T-033: the minimal pin layer (TRD §1.2, §4.5, D5). Tapping
@@ -148,7 +186,8 @@ struct MapScreen: View {
                             place: place,
                             isListed: PlacesListComposition.isListed(
                                 place.id, saved: savedPlacesStore.savedPlaceIDs, visits: visitedPlacesStore.visits
-                            )
+                            ),
+                            isDimmed: isPlaceDimmed(place)
                         ) { detailRouter.openPlace(place) }
                     }
                 }
@@ -200,6 +239,26 @@ struct MapScreen: View {
                     .padding()
             }
         }
+        .overlay {
+            // z3 (TRD §2.3/D3): the tap-catcher, `.search`-only in this
+            // tree today. Opacity 0, still hit-testing — keeps tap-outside
+            // dismissal and stops a stray map tap opening a Hood sheet
+            // underneath the surface. The visual job (a scrim) is handed to
+            // the selective dim at z0 instead: req 4 needs the *matches* to
+            // stay visible, which a uniform scrim would also darken (§2.3).
+            if chrome.presented == .search {
+                Color.clear
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture { dismissSearch() }
+                    // VoiceOver dismisses via the ✕ button or the standard
+                    // two-finger scrub gesture instead of this invisible,
+                    // full-screen catcher (ios-code-reviewer trd-review
+                    // finding, folded in at build rather than left as a
+                    // follow-up).
+                    .accessibilityHidden(true)
+            }
+        }
         .overlay(alignment: .bottom) {
             VStack(spacing: 8) {
                 if settingsHintVisible {
@@ -238,7 +297,37 @@ struct MapScreen: View {
                     onSelect: { place in detailRouter.openPlace(place) },
                     onDismiss: { chrome.dismiss() }
                 )
+            } else if chrome.presented == .profile {
+                // T-037: passport TRD §4.6, §11 C11. No `onSelect` — no
+                // sticker and no Hood row is tappable in V1 (D10), so unlike
+                // `.places` there is no path from here into a depth-1 modal.
+                PassportSurface(
+                    stickers: passportStickers,
+                    progress: passportProgress,
+                    isOverallLocal: PassportComposition.isOverallLocal(passportProgress),
+                    onDismiss: { chrome.dismiss() }
+                )
+            } else if chrome.presented == .search {
+                // search-quick-filters TRD §4.7, §2.3. Two heights (D2), own
+                // drag handle, opaque `Color("Surface")` — the z3 tap-catcher
+                // above is a separate layer, not part of this view.
+                SearchOverlay(
+                    session: searchSession,
+                    results: searchResults,
+                    onSelect: handleSearchResultSelection,
+                    onDismiss: dismissSearch
+                )
             }
+        }
+        .overlay(alignment: .bottom) {
+            // z7 (TRD §2.3): always visible, always hit-testable, never
+            // covered by this file's own z3/z4/z5 layers — drawn last among
+            // this file's overlays so it renders above all of them.
+            MapNavRow(
+                isSearchPresented: chrome.presented == .search,
+                onSearchTap: handleSearchButtonTap
+            )
+            .padding(.bottom, 96)
         }
         .sheet(isPresented: detailRouter.isDepth1Presented) {
             // Site A (TRD §4.2): one `.sheet` modifier, content switched
@@ -313,9 +402,13 @@ struct MapScreen: View {
         .onChange(of: chrome.presented) { oldValue, newValue in
             // D8: leaving `.places` — by any path, including a switch to
             // another surface — must not strand a place modal that was only
-            // reachable because the list was open underneath it.
+            // reachable because the list was open underneath it. Same
+            // `.onChange` also covers leaving `.search` by any path
+            // (search-quick-filters TRD §4.9/D11) — see the function body.
             Self.handlePresentedSurfaceChange(from: oldValue, to: newValue, router: detailRouter)
         }
+        .onChange(of: hoods) { _, _ in rebuildSearchIndex() }
+        .onChange(of: placeCatalog.allPlaces) { _, _ in rebuildSearchIndex() }
         .onChange(of: scenePhase) { _, newPhase in
             permissionPrompt?.isSceneActive = (newPhase == .active)
             if newPhase == .active {
@@ -376,14 +469,126 @@ struct MapScreen: View {
     /// While `.places` is presented the scrim blocks map taps, so a depth-1
     /// place modal open at that point can only have been opened from a list
     /// row; closing the list must not leave it behind.
+    ///
+    /// search-quick-filters TRD §4.9/D11 folds in here too: leaving
+    /// `.search` — again, by any path — calls `router.closeHood()`, which
+    /// clears whichever destination a search result opened (a search can
+    /// produce either a Hood or a place sheet, unlike `.places`, which only
+    /// ever produces a place). The explicit dismiss paths (✕, drag,
+    /// tap-outside, re-tap) already call this directly; this `.onChange`
+    /// hook is the backstop for the one path those can't reach — switching
+    /// straight to another nav surface without dismissing search first.
     static func handlePresentedSurfaceChange(from oldValue: NavSurface?, to newValue: NavSurface?, router: DetailRouter) {
-        guard oldValue == .places, newValue != .places else { return }
-        router.closePlace()
+        guard oldValue != newValue else { return }
+        if oldValue == .places {
+            router.closePlace()
+        }
+        if oldValue == .search {
+            router.closeHood()
+        }
     }
 
     private func openPlacesList() {
         Self.openPlacesList(router: detailRouter, chrome: chrome)
     }
+
+    // MARK: - search-quick-filters (T-038) presentation wiring — same
+    // construction as `openPlacesList`/`openPassport` above: pure/testable
+    // static functions over the objects they touch (TRD §4.9, §9 row 1/7).
+
+    /// The search button's action when `.search` is not yet presented.
+    /// Closes any open Hood sheet first, for the same reason
+    /// `openPlacesList` does: presenting the overlay with one already open
+    /// would put it underneath a system sheet, in a layer that can never be
+    /// reached.
+    static func openSearch(router: DetailRouter, chrome: MapChromeState) {
+        router.closeHood()
+        chrome.toggle(.search)
+    }
+
+    /// Every manual-dismiss path (✕, drag-past-threshold, z3 tap-outside,
+    /// re-tapping the search button while open) routes through this
+    /// (TRD §4.6's table, D11): `clear()` because this *is* a completion,
+    /// not an interruption, and `closeHood()` because search can produce
+    /// either destination and neither should outlive the surface it was
+    /// opened from.
+    static func dismissSearch(router: DetailRouter, chrome: MapChromeState, session: SearchSession) {
+        session.clear()
+        router.closeHood()
+        chrome.dismiss()
+    }
+
+    private func handleSearchButtonTap() {
+        if chrome.presented == .search {
+            dismissSearch()
+        } else {
+            Self.openSearch(router: detailRouter, chrome: chrome)
+        }
+    }
+
+    private func dismissSearch() {
+        Self.dismissSearch(router: detailRouter, chrome: chrome, session: searchSession)
+    }
+
+    /// A result "goes where the map would have gone" (TRD §9 row 5): the
+    /// same `openPlace`/`openHood` calls a pin tap or a Hood-sheet row would
+    /// make, preceded by `clear()` (PRD req 7 bullet 2 — selection
+    /// completes the search). The Hood branch also pans the camera to fit
+    /// the Hood, issued *before* `openHood` so the move is committed under
+    /// the sheet rather than fighting it (§4.9).
+    private func handleSearchResultSelection(_ result: SearchResult) {
+        searchSession.clear()
+        switch result.kind {
+        case .place(let place, _):
+            detailRouter.openPlace(place)
+        case .hood(let hood):
+            camera = .region(MKCoordinateRegion(hood.boundingRect))
+            detailRouter.openHood(hood)
+        }
+    }
+
+    /// Off the cold-open path (§4.9) — rebuilt from whichever catalog just
+    /// changed, so the index is correct the moment both have resolved
+    /// without either `.task` needing to know about the other.
+    private func rebuildSearchIndex() {
+        searchIndex = SearchIndex.build(places: placeCatalog.allPlaces, hoods: hoods)
+    }
+
+    /// search-quick-filters TRD §4.10 — `false` whenever there is nothing to
+    /// emphasise, which is also the byte-identical-to-today case.
+    private func isPlaceDimmed(_ place: Place) -> Bool {
+        guard let searchEmphasis else { return false }
+        return !searchEmphasis.places.contains(place.id)
+    }
+
+    private func isHoodDimmed(_ hood: Hood) -> Bool {
+        guard let searchEmphasis else { return false }
+        return !searchEmphasis.hoods.contains(hood.id)
+    }
+
+    // MARK: - passport (T-037) presentation wiring — same construction as
+    // `openPlacesList` above, pure/testable (TRD §4.6, §9 row 2, §11 C11).
+
+    /// `ProfileButton`'s eventual action (TRD §2.4, §4.6) — not yet called
+    /// from any live button (§11 C7 is blocked on T-032's `MapNavRow`, not
+    /// built here), but the open-path plumbing §9 row 2(c) checks is built
+    /// and tested regardless, so wiring the button in later is one call
+    /// site, not new logic. Closing the Hood sheet first for the same
+    /// reason as `openPlacesList`: a tap must not present Passport
+    /// *underneath* a still-open system sheet, in a layer that can never be
+    /// reached.
+    static func openPassport(router: DetailRouter, chrome: MapChromeState) {
+        router.closeHood()
+        chrome.toggle(.profile)
+    }
+
+    // No `.profile`-leaving analogue to `handlePresentedSurfaceChange` above:
+    // unlike `.places`, Passport has no tappable sticker or Hood row (D10)
+    // and so structurally can never have a place modal stacked on top of it
+    // — there is nothing for a leave-hook to clean up. Stated here rather
+    // than left implicit, since the TRD's §4.6 restates T-036's D8 "on
+    // leave, `router.closePlace()`" pattern and a future reader should not
+    // assume it was missed.
 
     /// Off the main actor; the map renders before this resolves (§5.1, §7).
     private func loadHoods() async {

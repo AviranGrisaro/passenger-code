@@ -27,7 +27,8 @@ struct DetailRouterTests {
     private static func makePlace(id: String, hoodID: String) -> Place {
         Place(
             id: id, name: id, category: .eatDrink, hoodID: hoodID,
-            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0), permanentlyClosed: false, isTouristTrap: nil
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0), permanentlyClosed: false,
+            placeType: "cafe", isTouristTrap: nil
         )
     }
 

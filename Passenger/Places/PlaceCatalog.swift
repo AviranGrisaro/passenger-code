@@ -132,7 +132,9 @@ final class PlaceCatalog {
                     hoodID: hoodRow.id,
                     coordinate: CLLocationCoordinate2D(latitude: row.latitude, longitude: row.longitude),
                     permanentlyClosed: row.permanentlyClosed,
-                    isTouristTrap: row.isTouristTrap
+                    placeType: row.placeType,
+                    isTouristTrap: row.isTouristTrap,
+                    keywords: row.keywords
                 )
                 byHood[hoodRow.id, default: []].append(place)
                 byID[place.id] = place
@@ -156,7 +158,9 @@ final class PlaceCatalog {
                 hoodID: cached.hoodID,
                 coordinate: CLLocationCoordinate2D(latitude: cached.latitude, longitude: cached.longitude),
                 permanentlyClosed: cached.permanentlyClosed,
-                isTouristTrap: cached.isTouristTrap
+                placeType: cached.placeType,
+                isTouristTrap: cached.isTouristTrap,
+                keywords: cached.keywords
             )
             byHood[cached.hoodID, default: []].append(place)
             byID[place.id] = place
@@ -174,7 +178,8 @@ final class PlaceCatalog {
                 return PlacesCache.CachedPlace(
                     id: row.id, name: row.name, category: row.category,
                     hoodID: hoodRow.id, latitude: row.latitude, longitude: row.longitude,
-                    permanentlyClosed: row.permanentlyClosed, isTouristTrap: row.isTouristTrap
+                    permanentlyClosed: row.permanentlyClosed, placeType: row.placeType,
+                    isTouristTrap: row.isTouristTrap, keywords: row.keywords
                 )
             }
         }
@@ -192,21 +197,28 @@ final class PlaceCatalog {
             let longitude: Double
             /// places-been-saved TRD §3.2, D1 — non-optional, so a bundled
             /// seed missing this key fails to decode as a whole rather than
-            /// silently reporting every place open. `place_type`, `keywords`
-            /// stay undeclared: `Decodable` ignores unknown JSON keys, and
-            /// neither this task's nor `Place`'s model reads them yet
-            /// (hood-place-detail TRD §8 D7).
+            /// silently reporting every place open.
             let permanentlyClosed: Bool
+            /// passport TRD §3.2, D2 — non-optional, same reasoning as
+            /// `permanentlyClosed`: a missing key fails the whole decode
+            /// rather than silently defaulting every place to a generic
+            /// sticker.
+            let placeType: String
             /// tourist-trap-flag TRD §3.1, §11 C6 — `nil`/absent == not yet
             /// rated (three states). `var ... = nil`, not `let` — see
             /// `PlacesAPI.PlaceRow`'s identical field for why a `let`
             /// default would silently defeat `Decodable` here.
             var isTouristTrap: Bool? = nil
+            /// search-quick-filters TRD §3.2 — non-optional, same reasoning
+            /// as `permanentlyClosed`/`placeType`: an absent key fails the
+            /// whole decode. An empty array is a valid, decoded value.
+            let keywords: [String]
 
             enum CodingKeys: String, CodingKey {
-                case id, name, category, latitude, longitude
+                case id, name, category, latitude, longitude, keywords
                 case hoodID = "hood_id"
                 case permanentlyClosed = "permanently_closed"
+                case placeType = "place_type"
                 case isTouristTrap = "is_tourist_trap"
             }
         }
@@ -242,7 +254,9 @@ final class PlaceCatalog {
                 hoodID: entry.hoodID,
                 coordinate: CLLocationCoordinate2D(latitude: entry.latitude, longitude: entry.longitude),
                 permanentlyClosed: entry.permanentlyClosed,
-                isTouristTrap: entry.isTouristTrap
+                placeType: entry.placeType,
+                isTouristTrap: entry.isTouristTrap,
+                keywords: entry.keywords
             )
             byHood[entry.hoodID, default: []].append(place)
             byID[place.id] = place

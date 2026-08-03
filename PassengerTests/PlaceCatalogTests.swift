@@ -94,7 +94,8 @@ struct PlaceCatalogTests {
                 places: [
                     PlacesAPI.PlaceRow(
                         id: "would-be-live-place", name: "Live Place", category: "eat-drink",
-                        latitude: 32.0531, longitude: 34.7623, permanentlyClosed: false
+                        latitude: 32.0531, longitude: 34.7623, permanentlyClosed: false, placeType: "cafe",
+                        keywords: []
                     ),
                 ]
             ),
@@ -211,8 +212,12 @@ struct PlaceCatalogTests {
 
     @Test("a live payload's PlaceRow JSON with permanently_closed decodes it correctly")
     func liveDecodeSucceedsWhenPermanentlyClosedPresent() throws {
+        // `place_type` and `keywords` are also required (passport TRD §3.2,
+        // D2; search-quick-filters TRD §3.2) — present here so this test
+        // still isolates `permanently_closed`, not an unrelated decode
+        // failure.
         let json = """
-        [{"id":"a","name":"A","category":"eat-drink","latitude":32.05,"longitude":34.77,"permanently_closed":true}]
+        [{"id":"a","name":"A","category":"eat-drink","latitude":32.05,"longitude":34.77,"permanently_closed":true,"place_type":"cafe","keywords":[]}]
         """.data(using: .utf8)!
         let rows = try JSONDecoder().decode([PlacesAPI.PlaceRow].self, from: json)
         #expect(rows.first?.permanentlyClosed == true)

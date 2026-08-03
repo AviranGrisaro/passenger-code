@@ -29,6 +29,10 @@ struct PlacesAPI: PlacesFetching {
         /// `PlaceCatalog.load()` treats like any other fetch failure and
         /// falls back to cache/seed, never a silent `false`.
         let permanentlyClosed: Bool
+        /// passport TRD §3.2, D2 — non-optional, same reasoning as
+        /// `permanentlyClosed`: a missing column is a loud decode failure
+        /// with a designed fallback, never a silent placeholder.
+        let placeType: String
         /// tourist-trap-flag TRD §3.1, §11 C6 — `Bool?`, absent/`null` on the
         /// wire decodes to `nil` for free (three states, not a boolean).
         /// `var ... = nil`, not `let` — a `let` property with an initial
@@ -37,10 +41,15 @@ struct PlacesAPI: PlacesFetching {
         /// real value); `var` keeps both the default for manual
         /// construction and correct decoding.
         var isTouristTrap: Bool? = nil
+        /// search-quick-filters TRD §3.2 — non-optional. A payload missing
+        /// this column throws out of `JSONDecoder.decode`, same fallback
+        /// path as `permanentlyClosed`/`placeType` above.
+        let keywords: [String]
 
         enum CodingKeys: String, CodingKey {
-            case id, name, category, latitude, longitude
+            case id, name, category, latitude, longitude, keywords
             case permanentlyClosed = "permanently_closed"
+            case placeType = "place_type"
             case isTouristTrap = "is_tourist_trap"
         }
     }
@@ -81,14 +90,15 @@ struct PlacesAPI: PlacesFetching {
         ) else {
             throw PlacesAPIError.badResponse
         }
-        // places-been-saved TRD §3.2/§11 C1 + tourist-trap-flag TRD §11 C6 —
+        // places-been-saved TRD §3.2/§11 C1 + tourist-trap-flag TRD §11 C6 +
+        // passport TRD §3.2/§11 C1 + search-quick-filters TRD §3.2/§11 C1 —
         // widens the nested `places(...)` select to include
-        // `permanently_closed` and `is_tourist_trap` (T-042's `place_type`/
-        // `keywords` stay out; each lands in the task that first reads it).
+        // `permanently_closed`, `is_tourist_trap`, `place_type` and
+        // `keywords`, completing T-042 §3 D5's four-column assignment.
         components.queryItems = [
             URLQueryItem(
                 name: "select",
-                value: "id,blurb,places(id,name,category,latitude,longitude,permanently_closed,is_tourist_trap)"
+                value: "id,blurb,places(id,name,category,latitude,longitude,permanently_closed,place_type,is_tourist_trap,keywords)"
             ),
             URLQueryItem(name: "city", value: "eq.tel-aviv"),
         ]
