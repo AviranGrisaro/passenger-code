@@ -27,4 +27,26 @@ enum HeatPalette {
     static func fill(for band: HeatBand) -> Color {
         hue.opacity(opacity(for: band))
     }
+
+    /// The fill's own dim factor (search-quick-filters TRD §4.10), folded in
+    /// here as a pure numeric composition rather than left to `HoodLayer` to
+    /// apply as a view modifier — so "does a layer's dim reach its heat
+    /// fill" is a unit-testable question about two `Double`s, not a fact
+    /// about a SwiftUI modifier chain no test can observe. This is an
+    /// *additional* function, not a change to `opacity(for:)`'s signature —
+    /// that one still takes exactly one argument, per this file's own rule
+    /// above.
+    ///
+    /// Added at T-038/PAS-29's second acceptance pass (F1a): `HoodLayer`
+    /// applied its dim multiplier to the polygon's stroke and to the
+    /// centroid annotation, but never to `foregroundStyle(fillColor)` —
+    /// despite `HoodLayer`'s own doc comments twice claiming the dim
+    /// "multiplies every visible element's opacity." A non-matching Hood
+    /// kept its full-strength heat fill during an active search, which is
+    /// the channel PRD req 4 bullet 2 is actually about (the fill dominates
+    /// a 0.5pt stroke). `dimOpacity` of `1` is a no-op, so every caller that
+    /// predates search's dim renders byte-identically to before.
+    static func fillOpacity(for band: HeatBand, dimmedBy dimOpacity: Double) -> Double {
+        opacity(for: band) * dimOpacity
+    }
 }

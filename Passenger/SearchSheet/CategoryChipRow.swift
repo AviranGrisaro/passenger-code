@@ -34,6 +34,13 @@ private struct CategoryChip: View {
                     Image(systemName: "checkmark")
                 }
                 Text(category.displayName)
+                    // Mirrors `SearchResultRow`'s existing pattern (PRD req 8
+                    // bullet 4, added at T-038/PAS-29's second acceptance
+                    // pass, F2): without this, the largest accessibility text
+                    // size compresses "Eat & Drink"/"Things to do" inside the
+                    // fixed, non-wrapping `HStack` in `CategoryChipRow`
+                    // instead of letting the label wrap and the chip grow.
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .font(.subheadline.weight(isSelected ? .semibold : .regular))
             .padding(.horizontal, 14)

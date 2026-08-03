@@ -18,8 +18,12 @@ struct HoodLayer: MapContent {
     let zoomTier: MapZoomTier
     /// search-quick-filters TRD §4.10, D4 — `false` renders byte-identically
     /// to this layer's pre-existing output; `true` multiplies every visible
-    /// element's opacity by 0.25. Computed by `MapScreen` from the live
-    /// search result set, never stored here.
+    /// element's opacity by 0.25, **including the polygon's heat fill**
+    /// (`fillColor`, via `HeatPalette.fillOpacity(for:dimmedBy:)`) — not
+    /// only the stroke and the centroid annotation, which is all this
+    /// multiplier reached before T-038/PAS-29's second acceptance pass
+    /// (F1a). Computed by `MapScreen` from the live search result set, never
+    /// stored here.
     let isDimmed: Bool
 
     /// Visible at `.close` only (design spec §2) — unchanged threshold and
@@ -117,9 +121,14 @@ struct HoodLayer: MapContent {
     }
 
     /// No fill at all when there's no data — the map, not a color, carries
-    /// "empty" (PRD req 7).
-    private var fillColor: Color {
+    /// "empty" (PRD req 7). Dimmed by the same `dimOpacity` the stroke and
+    /// annotation apply (search-quick-filters TRD §4.10, F1a fix) — a `nil`
+    /// band stays `.clear` either way, since dimming a fully-transparent fill
+    /// has nothing to multiply. Not `private`: `HoodLayerFillDimTests`
+    /// reads this directly to assert the dim reaches the rendered alpha,
+    /// not just the `isDimmed` value handed in (L-009).
+    var fillColor: Color {
         guard let band else { return .clear }
-        return HeatPalette.fill(for: band)
+        return HeatPalette.hue.opacity(HeatPalette.fillOpacity(for: band, dimmedBy: dimOpacity))
     }
 }
