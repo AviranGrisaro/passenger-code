@@ -52,6 +52,7 @@ Glass is the material of the **navigation layer** (bars, toolbars, floating cont
 - Tests ship with the code: new logic gets XCTest coverage in the same task (QA expands coverage; it doesn't write your unit tests for you).
 - Build/verify before declaring done: `xcodebuild -project Passenger.xcodeproj -scheme Passenger -destination 'platform=iOS Simulator,name=iPhone 16' build` (adjust scheme/simulator to what exists). Run `PassengerTests` when they cover touched code. Report evidence (build result, test output), not claims — "it builds" without output is not done.
 - Commit in `passenger-code` with clear conventional messages, one logical change per commit; never force-push; ask before destructive git ops.
+- **`Decodable`/`Codable` model properties with a default value must be `var`, never `let` (L-028, 2026-08-03).** A `let` optional-with-default is silently excluded from the synthesized `init(from:)`'s decode calls — it always resolves to the default, compiles clean, and only shows up as a field that's mysteriously always its default in production. `Place.isTouristTrap` shipped this way once (T-035) before being caught in review.
 
 ## Opening backend stories (how you get something built on the other side)
 Mid-build you'll sometimes need a backend capability that doesn't exist yet — a new column, table, RPC, or RLS change — beyond what the TRD already specified. Don't invent the schema yourself and don't silently block. Instead:
