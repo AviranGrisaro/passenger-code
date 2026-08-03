@@ -80,12 +80,9 @@ struct PlaceDetailModal: View {
     @ViewBuilder
     private var touristTrapSlot: some View {
         if place.isTouristTrap == true {
-            HStack(spacing: 6) {
-                Image(systemName: "camera.fill")
-                Text(FlagCopy.placeLine)
-            }
-            .font(.subheadline)
-            .foregroundStyle(Color("Flag"))
+            Label(FlagCopy.placeLine, systemImage: "camera.fill")
+                .font(.subheadline)
+                .foregroundStyle(Color("Flag"))
         }
     }
 

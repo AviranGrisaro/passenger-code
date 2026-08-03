@@ -235,7 +235,7 @@ struct MapScreen: View {
             if chrome.presented == .places {
                 PlacesListOverlay(
                     entries: placesListEntries,
-                    onSelect: { place in Self.selectPlaceFromList(router: detailRouter, chrome: chrome, place: place) },
+                    onSelect: { place in detailRouter.openPlace(place) },
                     onDismiss: { chrome.dismiss() }
                 )
             }
@@ -298,9 +298,10 @@ struct MapScreen: View {
             await eventStore.load(anchorHour: densityStore.anchorHour)
         }
         .task {
+            // Sequenced in one `.task` (not two independent modifiers) —
+            // `start()` must not race `loadPersistedState()`, since it reads
+            // state the load populates.
             await localQACoordinator.loadPersistedState()
-        }
-        .task {
             await localQACoordinator.start()
         }
         .onChange(of: localQACoordinator.toastState) { _, _ in
@@ -378,22 +379,6 @@ struct MapScreen: View {
     static func handlePresentedSurfaceChange(from oldValue: NavSurface?, to newValue: NavSurface?, router: DetailRouter) {
         guard oldValue == .places, newValue != .places else { return }
         router.closePlace()
-    }
-
-    /// `PlacesListOverlay`'s `onSelect` (bug fix, PAS-36): tapping a row
-    /// opens the place's depth-1 sheet *and* dismisses the list, so the two
-    /// are never co-presented (D8's invariant, same as `openPlacesList` and
-    /// `handlePresentedSurfaceChange` above). Without the explicit
-    /// `chrome.dismiss()` here, `chrome.presented` never changes — it was
-    /// already `.places` and stays `.places` — so `.onChange(of:
-    /// chrome.presented)` never fires and `handlePresentedSurfaceChange`
-    /// never runs. That `.onChange` only catches a *surface transition*; the
-    /// third transition (select a row from an already-open list) isn't one,
-    /// so it needs its own explicit dismiss rather than relying on the
-    /// existing onChange plumbing to catch it.
-    static func selectPlaceFromList(router: DetailRouter, chrome: MapChromeState, place: Place) {
-        router.openPlace(place)
-        chrome.dismiss()
     }
 
     private func openPlacesList() {

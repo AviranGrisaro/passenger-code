@@ -58,7 +58,7 @@ struct PlacesListOverlay: View {
             header
             content
         }
-        .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(Color("Surface"), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .padding(.horizontal, 8)
         .padding(.bottom, 8)
     }

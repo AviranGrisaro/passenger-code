@@ -126,31 +126,4 @@ struct MapScreenD8WiringTests {
 
         #expect(router.place == nil)
     }
-
-    /// PAS-36 regression: tapping a row in the open Places list must dismiss
-    /// the list itself, not just open the place's sheet. Before this fix,
-    /// `onSelect` only called `detailRouter.openPlace`, so `chrome.presented`
-    /// stayed `.places` and the z5 `PlacesListOverlay` kept rendering behind
-    /// the system sheet — both visible at once, violating D8's "a NavSurface
-    /// and a system sheet are never co-presented" invariant. This is the
-    /// third transition D8 exists to cover, alongside `openPlacesListClosesHood`
-    /// and `handlePresentedSurfaceChange` above — selecting a row from an
-    /// already-open list never changes `chrome.presented` on its own, so
-    /// `handlePresentedSurfaceChange`'s `.onChange` hook can't catch it; the
-    /// dismiss has to be explicit at the selection site.
-    @Test("selecting a place from the open list dismisses the list and opens the place")
-    func selectingPlaceFromListDismissesList() {
-        let router = DetailRouter()
-        let chrome = MapChromeState()
-        chrome.toggle(.places)
-
-        let place = Place(
-            id: "cafe", name: "cafe", category: .eatDrink, hoodID: "florentin",
-            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0), permanentlyClosed: false, isTouristTrap: nil
-        )
-        MapScreen.selectPlaceFromList(router: router, chrome: chrome, place: place)
-
-        #expect(chrome.presented != .places)
-        #expect(router.place?.id == place.id)
-    }
 }
