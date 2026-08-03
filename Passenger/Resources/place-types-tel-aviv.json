@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "_note": "PROVISIONAL Build-Phase-1 mapping. The ratified vocabulary is places-dataset (T-042) step B1, Aviran-gated. Regenerate/replace, do not extend by hand.",
+  "types": {
+    "bar": "diamond",
+    "cafe": "circle",
+    "landmark": "star",
+    "market": "square",
+    "museum": "hexagon",
+    "restaurant": "triangle"
+  }
+}
