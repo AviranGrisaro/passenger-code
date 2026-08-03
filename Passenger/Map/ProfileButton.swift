@@ -26,6 +26,7 @@ struct ProfileButton: View {
             Image(systemName: "person.fill")
                 .font(.title3)
                 .frame(width: 44, height: 44)  // Fitts's Law minimum (design-principles.md §2)
+                .background(.thinMaterial, in: Circle())
         }
         .accessibilityLabel("Profile")
         .accessibilityAddTraits(isPresented ? [.isSelected] : [])
