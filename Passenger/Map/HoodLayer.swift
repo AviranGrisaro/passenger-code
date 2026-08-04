@@ -26,6 +26,25 @@ struct HoodLayer: MapContent {
     /// stored here.
     let isDimmed: Bool
 
+    /// Pointer-only (trackpad on iPad / Mac idiom, `MapScreen.handleHover`) —
+    /// `MapScreen` passes `true` for the one Hood under the pointer, `false`
+    /// (the default) for every other Hood and for every touch-only device,
+    /// where `onContinuousHover` never fires at all.
+    let isHovered: Bool
+
+    /// Explicit rather than the synthesized memberwise init, so `isHovered`
+    /// can default to `false` at the call site: every pre-existing 4-arg
+    /// call site (including `HoodLayerFillDimTests`) keeps compiling
+    /// unchanged, still rendering byte-identically to before this property
+    /// existed.
+    init(hood: Hood, band: HeatBand?, zoomTier: MapZoomTier, isDimmed: Bool, isHovered: Bool = false) {
+        self.hood = hood
+        self.band = band
+        self.zoomTier = zoomTier
+        self.isDimmed = isDimmed
+        self.isHovered = isHovered
+    }
+
     /// Visible at `.close` only (design spec §2) — unchanged threshold and
     /// unchanged behaviour from before the flag existed (tourist-trap-flag
     /// TRD §2.3: `closeSpanThreshold` **is** the old `nameLabelSpanThreshold`,
@@ -52,16 +71,19 @@ struct HoodLayer: MapContent {
         switch effectiveStroke {
         case .none:
             MapPolygon(coordinates: hood.coordinates)
-                .foregroundStyle(fillColor)
-                .stroke(.secondary.opacity(0.35 * dimOpacity), lineWidth: 0.5)
+                .foregroundStyle(.clear)
+                .stroke(borderColor, lineWidth: strokeWidth(base: 0.5))
         case .plain:
             MapPolygon(coordinates: hood.coordinates)
-                .foregroundStyle(fillColor)
-                .stroke(Color("Flag").opacity(dimOpacity), lineWidth: 2.5)
+                .foregroundStyle(.clear)
+                .stroke(Color("Flag").opacity(min(dimOpacity * hoverGlow, 1)), lineWidth: strokeWidth(base: 2.5))
         case .busyWarning:
             MapPolygon(coordinates: hood.coordinates)
-                .foregroundStyle(fillColor)
-                .stroke(Color("Flag").opacity(dimOpacity), style: StrokeStyle(lineWidth: 3, dash: [6, 4]))
+                .foregroundStyle(.clear)
+                .stroke(
+                    Color("Flag").opacity(min(dimOpacity * hoverGlow, 1)),
+                    style: StrokeStyle(lineWidth: strokeWidth(base: 3), dash: [6, 4])
+                )
         }
 
         // One annotation per Hood, always present at every zoom — this is the
@@ -130,5 +152,32 @@ struct HoodLayer: MapContent {
     var fillColor: Color {
         guard let band else { return .clear }
         return HeatPalette.hue.opacity(HeatPalette.fillOpacity(for: band, dimmedBy: dimOpacity))
+    }
+
+    /// Design fix (2026-08-04): a Hood is marked by its border alone, never
+    /// by a filled interior — `fillColor` above is kept only for
+    /// `HoodLayerFillDimTests` and no longer reaches `body`. The color that
+    /// used to live in the interior fill now lives in this line instead: no
+    /// band still draws the old neutral hairline, a banded Hood's line
+    /// carries `HeatPalette.hue`, boosted well past `fillColor`'s own
+    /// translucent-fill opacity steps (0.16/0.38/0.62) since a thin stroke
+    /// at fill-strength alpha would be nearly invisible against the map.
+    private var borderColor: Color {
+        guard let band else { return .secondary.opacity(0.35 * dimOpacity) }
+        let bandStrength = min(HeatPalette.opacity(for: band) + 0.35, 1)
+        return HeatPalette.hue.opacity(min(bandStrength * hoverGlow, 1) * dimOpacity)
+    }
+
+    /// The "glow a little" a border gets under the pointer (design fix,
+    /// 2026-08-04) — `1` (no-op) whenever `isHovered` is `false`, which is
+    /// every Hood on a touch-only device, so this never changes anything
+    /// there. Multiplies alongside `dimOpacity` rather than replacing it, so
+    /// a hovered-but-search-dimmed Hood still reads as dimmed, just less so.
+    private var hoverGlow: Double { isHovered ? 1.4 : 1.0 }
+
+    /// A hovered border is a touch thicker as well as brighter — same
+    /// `isHovered` no-op guarantee as `hoverGlow`.
+    private func strokeWidth(base: CGFloat) -> CGFloat {
+        base + (isHovered ? 1 : 0)
     }
 }

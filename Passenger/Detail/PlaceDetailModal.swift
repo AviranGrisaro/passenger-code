@@ -19,7 +19,7 @@ struct PlaceDetailModal: View {
             routeButton
         }
         .padding()
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
 

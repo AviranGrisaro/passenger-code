@@ -63,6 +63,12 @@ struct MapScreen: View {
     @State private var cameraRegionDump: String = ""
     @State private var hoods: [Hood] = []
     @State private var hitTester = HoodHitTester(hoods: [])
+    /// Design fix (2026-08-04): the Hood under the pointer, so `HoodLayer`
+    /// can glow its border. Pointer-only — `onContinuousHover` only ever
+    /// fires from a trackpad/Pointer device (iPad/Mac idiom), so this stays
+    /// `nil` for the lifetime of a touch-only session and every Hood renders
+    /// exactly as it did before this property existed.
+    @State private var hoveredHoodID: Hood.ID?
     /// The single derivation of zoom from span (tourist-trap-flag TRD §2.2,
     /// §2.3) — the map never asks "close enough to show names/pins?" and
     /// "close enough to show the flag label?" as two independently-computed
@@ -161,6 +167,28 @@ struct MapScreen: View {
         return fills
     }
 
+    /// Pulled out of `body`'s `Map { }` builder closure (design fix,
+    /// 2026-08-04): inlined there, adding `HoodLayer`'s new `isHovered`
+    /// argument pushed that single `MapContentBuilder` expression — already
+    /// large, with events/places/user-location siblings in the same closure
+    /// — past the type checker's time limit ("unable to type-check this
+    /// expression in reasonable time"). Factored into its own `some
+    /// MapContent` property, the exact same content type-checks instantly;
+    /// `Map`'s builder accepts a nested `MapContent` value exactly like a
+    /// nested `ForEach`, so this changes nothing about what's drawn.
+    @MapContentBuilder
+    private var hoodLayers: some MapContent {
+        ForEach(hoodFills, id: \.hood.id) { fill in
+            HoodLayer(
+                hood: fill.hood,
+                band: fill.band,
+                zoomTier: zoomTier,
+                isDimmed: isHoodDimmed(fill.hood),
+                isHovered: isHoodHovered(fill.hood)
+            )
+        }
+    }
+
     /// The Places list's read-time precedence merge (places-been-saved TRD
     /// §4.3) — a dictionary read over already-loaded data, run once per
     /// render pass, never a per-sheet fetch.
@@ -221,14 +249,7 @@ struct MapScreen: View {
     var body: some View {
         MapReader { proxy in
             Map(position: $camera) {
-                ForEach(hoodFills, id: \.hood.id) { fill in
-                    HoodLayer(
-                        hood: fill.hood,
-                        band: fill.band,
-                        zoomTier: zoomTier,
-                        isDimmed: isHoodDimmed(fill.hood)
-                    )
-                }
+                hoodLayers
                 // T-033: the minimal pin layer (TRD §1.2, §4.5, D5). Tapping
                 // the annotation's own button calls `openPlace` directly;
                 // `handleTap`'s `SpatialTapGesture` path below can call it
@@ -290,6 +311,18 @@ struct MapScreen: View {
                 SpatialTapGesture()
                     .onEnded { value in handleTap(at: value.location, proxy: proxy) }
             )
+            // Design fix (2026-08-04): a Hood's border glow on hover.
+            // `onContinuousHover` only ever fires from a trackpad/Pointer
+            // device (iPad/Mac idiom) — never from touch — so this is a
+            // silent no-op on iPhone and in every existing UI test.
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let location):
+                    handleHover(at: location, proxy: proxy)
+                case .ended:
+                    hoveredHoodID = nil
+                }
+            }
         }
         .ignoresSafeArea()
         .overlay(alignment: .top) {
@@ -379,7 +412,7 @@ struct MapScreen: View {
                     }
                 }
             }
-            .padding(.bottom, 32)
+            .padding(.bottom, 96)
             .opacity(chrome.isPresenting ? 0 : 1)
             .allowsHitTesting(!chrome.isPresenting)
         }
@@ -442,7 +475,7 @@ struct MapScreen: View {
                 onNearMeTap: handleNearMeTap,
                 onPlacesTap: openPlacesList
             )
-            .padding(.bottom, 96)
+            .padding(.bottom, 32)
         }
         .sheet(isPresented: detailRouter.isDepth1Presented) {
             // Site A (TRD §4.2): one `.sheet` modifier, content switched
@@ -472,7 +505,18 @@ struct MapScreen: View {
                     // T-034 TRD §4.7, D6: a third depth-1 destination, not a
                     // second `.sheet`. `EventDetailModal` is handed the
                     // event by value and needs no new environment injection.
-                    EventDetailModal(event: event)
+                    //
+                    // T-052/PAS-40: the Hood display name is resolved here,
+                    // against the same `hoods` this screen already loads for
+                    // `HoodHitTester`/heat, and handed in by value — same
+                    // shape as `HoodSheet` being handed an already-resolved
+                    // `Hood` rather than a slug it looks up itself. Keeps
+                    // `EventDetailModal` free of a new environment read while
+                    // still never rendering `event.hoodID`'s raw slug. `nil`
+                    // when `event.hoodID` doesn't match any loaded Hood (a
+                    // valid state — `PlaceCatalog`'s bundled-seed loader
+                    // tolerates the same kind of orphan id) or is `nil` itself.
+                    EventDetailModal(event: event, hoodName: hoods.first(where: { $0.id == event.hoodID })?.name)
                 }
             }
             .environment(placeCatalog)
@@ -723,6 +767,16 @@ struct MapScreen: View {
         return !searchEmphasis.hoods.contains(hood.id)
     }
 
+    /// Design fix (2026-08-04). Pulled out of the `ForEach` in `body` rather
+    /// than inlined as `fill.hood.id == hoveredHoodID` — inline, it pushed
+    /// the surrounding `MapContentBuilder` expression past the type
+    /// checker's time limit ("unable to type-check this expression in
+    /// reasonable time"); as a named function the same comparison type-checks
+    /// instantly.
+    private func isHoodHovered(_ hood: Hood) -> Bool {
+        hood.id == hoveredHoodID
+    }
+
     // MARK: - passport (T-037) presentation wiring — same construction as
     // `openPlacesList` above, pure/testable (TRD §4.6, §9 row 2, §11 C11).
 
@@ -810,6 +864,19 @@ struct MapScreen: View {
         } else if let hood = hitTester.hood(at: tapPoint, tolerance: tolerance) {
             detailRouter.openHood(hood)
         }
+    }
+
+    /// Design fix (2026-08-04): resolves the Hood under the pointer for
+    /// `HoodLayer`'s hover glow. `tolerance: 0` deliberately, unlike
+    /// `handleTap`'s enlarged touch target above — hover should track the
+    /// pointer sitting on the drawn polygon itself, not a margin extended
+    /// past it for a fingertip that doesn't apply here.
+    private func handleHover(at screenPoint: CGPoint, proxy: MapProxy) {
+        guard let coordinate = proxy.convert(screenPoint, from: .local) else {
+            hoveredHoodID = nil
+            return
+        }
+        hoveredHoodID = hitTester.hood(at: MKMapPoint(coordinate), tolerance: 0)?.id
     }
 
     /// Converts a screen-point distance into a map-point distance at the

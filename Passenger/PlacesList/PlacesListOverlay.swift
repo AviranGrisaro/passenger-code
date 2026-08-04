@@ -105,7 +105,7 @@ struct PlacesListOverlay: View {
                     }
                 }
             }
-            .frame(maxHeight: 420)
+            .frame(maxHeight: 480)
         }
     }
 }

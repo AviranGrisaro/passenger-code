@@ -22,6 +22,47 @@ struct HeatModalCard: View {
     /// as `PlacesListOverlay`/`PassportSurface`'s identical gesture.
     private static let dismissDragThreshold: CGFloat = 80
 
+    /// `MapNavRow`'s own band, duplicated here rather than read live
+    /// (`MapScreen.swift`'s `.padding(.bottom, 32)` + the 44pt button
+    /// height shared by `HeatButton`/`SearchButton`/`ProfileButton`) — the
+    /// same hardcoded-safe-area-math idiom every other bottom-chrome
+    /// element in `MapScreen` already uses, per that file's own disclosed
+    /// limitation on `edgeLayer(for:)`. If `MapNavRow`'s placement changes,
+    /// this must change with it.
+    private static let navRowBandHeight: CGFloat = 32 + 44
+
+    /// TRD §2.3 z5: "anchored a fixed distance above the nav row… never
+    /// `bottom: 0`." This is that fixed distance — clear breathing room
+    /// between the card's bottom edge and the nav row's top edge, not a
+    /// flush touch. Fixes F1 (2026-08-03 acceptance REJECT): the card
+    /// previously used `.padding(.bottom, 8)`, which put its bottom edge
+    /// *inside* the nav row's own 140pt band, so any card taller than
+    /// 132pt grew straight through the Heat/Search buttons and truncated
+    /// the "next day" flag to "…t day" at default text size.
+    private static let gapAboveNavRow: CGFloat = 16
+
+    /// Fixes F2 (2026-08-03 acceptance REJECT): with no cap anywhere in
+    /// `Passenger/`, AX5 was reachable and `HourReadout`'s offset numeral
+    /// wrapped mid-token ("+12"/"h" split across two lines) with the
+    /// "next day" pill breaking across two lines inside its own capsule.
+    /// `.accessibility3` is the chosen ceiling — confirmed by rendering the
+    /// full "+12h · 11:00 · next day" readout at AX3, AX4, and AX5 on
+    /// device (screenshots in the T-032 rebuild's PR/worklog): SwiftUI
+    /// clamps every size above the cap back down to this view's rendered
+    /// AX3 layout, one unbroken line, both at "Now" and at a "next day"
+    /// offset. AX3 was picked as the narrowest cap that still reads
+    /// comfortably large — not pushed lower — since nothing about this row
+    /// forced a tighter ceiling once F1's occlusion was fixed separately.
+    /// Scoped to this card's `VStack` alone, not the whole app —
+    /// `HourReadout` is a compact, glanceable status row (offset + clock +
+    /// a same-day/next-day flag), not body text a user reads at length,
+    /// and `HourSlider` beneath it is a native `Slider` with no text to
+    /// scale. PRD req 5's rendered-legibility bullet (L-009, v9) requires
+    /// unoccluded/unwrapped at "the largest **supported** size" — this cap
+    /// is what makes AX3 that size for this surface, not a deviation from
+    /// the requirement.
+    private static let maxDynamicTypeSize: DynamicTypeSize = .accessibility3
+
     var body: some View {
         ZStack(alignment: .bottom) {
             Color.black.opacity(0.3)
@@ -63,7 +104,8 @@ struct HeatModalCard: View {
         // number anyone can verify (T-031 §8 D1's reasoning).
         .background(Color("Surface"), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .padding(.horizontal, 8)
-        .padding(.bottom, 8)
+        .padding(.bottom, Self.navRowBandHeight + Self.gapAboveNavRow)
+        .dynamicTypeSize(...Self.maxDynamicTypeSize)
     }
 
     private var dragHandle: some View {
