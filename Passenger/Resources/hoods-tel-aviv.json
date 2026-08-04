@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-03T05:53:58Z",
+  "generatedAt": "2026-08-04T11:20:51Z",
   "city": "tel-aviv",
   "_attribution": "Hood boundary geometry in this dataset (see database/data/hoods-tel-aviv.source.json, per-row `provenance.source`) is derived in part from OpenStreetMap data, (c) OpenStreetMap contributors, available under the Open Database License (ODbL) 1.0 -- https://www.openstreetmap.org/copyright . Rows with provenance.source == 'manual' are hand-authored referencing real neighbourhood shapes/names, not an authoritative municipal or OSM source -- see the row's own provenance.sourceRef for what that means case by case. ODbL's attribution and share-alike-on-derived-databases obligations apply to the osm-sourced rows. Whether attribution must additionally be *displayed in-app* is not decided by this script -- it is Aviran's call (PAS-6 item 15; hood-dataset TRD sec 8 D8).",
   "hoods": [
@@ -6403,7 +6403,7 @@
         32.06801
       ],
       "blurb": null,
-      "isTouristTrap": null,
+      "isTouristTrap": false,
       "designatedForProgression": false
     },
     {
@@ -12678,7 +12678,7 @@
         32.08977
       ],
       "blurb": null,
-      "isTouristTrap": null,
+      "isTouristTrap": false,
       "designatedForProgression": false
     },
     {
@@ -14522,7 +14522,7 @@
         32.050839
       ],
       "blurb": null,
-      "isTouristTrap": null,
+      "isTouristTrap": false,
       "designatedForProgression": false
     },
     {
