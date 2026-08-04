@@ -24,9 +24,11 @@ struct ProfileButton: View {
             // never become one — req 1's avatar ban is enforced by §9 row
             // 1's grep, not by this choice.
             Image(systemName: "person.fill")
-                .font(.title3)
-                .frame(width: 44, height: 44)  // Fitts's Law minimum (design-principles.md §2)
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundStyle(Color.purple)
+                .frame(width: 52, height: 52)  // Fitts's Law minimum (design-principles.md §2)
                 .background(.thinMaterial, in: Circle())
+                .overlay(Circle().strokeBorder(Color.purple.opacity(0.9), lineWidth: 1.5))
         }
         .accessibilityLabel("Profile")
         .accessibilityAddTraits(isPresented ? [.isSelected] : [])

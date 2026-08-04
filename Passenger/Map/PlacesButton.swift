@@ -26,9 +26,11 @@ struct PlacesButton: View {
             // glyph (`bookmark`/`bookmark.fill`, `PlaceDetailModal`) or the
             // nearest-Hood glyph (`mappin.and.ellipse`, `HoodButton`).
             Image(systemName: "list.bullet")
-                .font(.title3)
-                .frame(width: 44, height: 44)  // Fitts's Law minimum (design-principles.md §2)
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundStyle(Color.pink)
+                .frame(width: 52, height: 52)  // Fitts's Law minimum (design-principles.md §2)
                 .background(.thinMaterial, in: Circle())
+                .overlay(Circle().strokeBorder(Color.pink.opacity(0.9), lineWidth: 1.5))
         }
         .accessibilityLabel("Places")
     }

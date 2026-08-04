@@ -15,9 +15,11 @@ struct HeatButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "flame.fill")
-                .font(.title3)
-                .frame(width: 44, height: 44)  // Fitts's Law minimum (design-principles.md §2)
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundStyle(Color.orange)
+                .frame(width: 52, height: 52)  // Fitts's Law minimum (design-principles.md §2)
                 .background(.thinMaterial, in: Circle())
+                .overlay(Circle().strokeBorder(Color.orange.opacity(0.9), lineWidth: 1.5))
         }
         .accessibilityLabel("Heat")
         .accessibilityAddTraits(isPresented ? [.isSelected] : [])

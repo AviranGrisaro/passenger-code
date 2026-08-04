@@ -13,9 +13,11 @@ struct SearchButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "magnifyingglass")
-                .font(.title3)
-                .frame(width: 44, height: 44)  // Fitts's Law minimum (design-principles.md §2)
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundStyle(Color.blue)
+                .frame(width: 52, height: 52)  // Fitts's Law minimum (design-principles.md §2)
                 .background(.thinMaterial, in: Circle())
+                .overlay(Circle().strokeBorder(Color.blue.opacity(0.9), lineWidth: 1.5))
         }
         .accessibilityLabel("Search")
         .accessibilityAddTraits(isPresented ? [.isSelected] : [])
