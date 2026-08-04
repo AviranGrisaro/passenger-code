@@ -62,7 +62,7 @@
       "place_type": "market",
       "keywords": ["spices", "browsing"],
       "permanently_closed": true,
-      "is_tourist_trap": null
+      "is_tourist_trap": true
     },
     {
       "id": "kerem-suzana-yemenite-kitchen",
