@@ -6,12 +6,17 @@ import SwiftUI
 /// already-fetched data.
 struct HoodSheet: View {
     let hood: Hood
+    /// scenic-walk (T-057): threaded through to Site B's nested
+    /// `PlaceDetailModal` below, same reason `MapScreen` passes it at Site A
+    /// — the corridor search needs every Hood's geometry, not just this one.
+    let hoods: [Hood]
 
     @Environment(PlaceCatalog.self) private var placeCatalog
     @Environment(DetailRouter.self) private var router
     // Not read by this view's own body — held only to re-apply to Site B's
     // `.sheet` content below (see that modifier's comment for why).
     @Environment(SavedPlacesStore.self) private var savedPlacesStore
+    @Environment(RoutePreviewModel.self) private var routePreviewModel
 
     var body: some View {
         ScrollView {
@@ -38,9 +43,10 @@ struct HoodSheet: View {
         // own explicit re-application of whatever its content reads.
         .sheet(isPresented: router.isDepth2Presented) {
             if let place = router.place {
-                PlaceDetailModal(place: place)
+                PlaceDetailModal(place: place, hoods: hoods)
                     .environment(router)
                     .environment(savedPlacesStore)
+                    .environment(routePreviewModel)
             }
         }
     }

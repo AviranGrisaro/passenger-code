@@ -5,10 +5,19 @@ import SwiftUI
 /// provenance word, no Places-list row; all T-036's.
 struct PlaceDetailModal: View {
     let place: Place
+    /// scenic-walk (T-057): the corridor candidate search needs every
+    /// Hood's geometry and flag, which `MapScreen` already loaded — passed
+    /// in rather than re-fetched, the same reason `place` itself is a plain
+    /// value parameter and not an environment lookup.
+    let hoods: [Hood]
 
     @Environment(SavedPlacesStore.self) private var savedPlaces
     @Environment(DetailRouter.self) private var router
     @Environment(\.directionsService) private var directionsService
+    @Environment(PlaceCatalog.self) private var placeCatalog
+    // scenic-walk (T-057, TRD §4.10): one app-lifetime instance, injected by
+    // `MapScreen` — not created here (TRD §4.4, A2).
+    @Environment(RoutePreviewModel.self) private var routePreviewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -16,11 +25,23 @@ struct PlaceDetailModal: View {
             categoryRow
             touristTrapSlot
             Spacer(minLength: 0)
+            RouteControls(model: routePreviewModel)
             routeButton
         }
         .padding()
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .task(id: place.id) {
+            await routePreviewModel.resolve(for: place, hoods: hoods, places: placeCatalog.allPlaces)
+        }
+        .onDisappear {
+            // TRD §4.4: "torn down on dismiss" — the shared, long-lived
+            // model's state is cleared the moment this modal leaves the
+            // hierarchy, so `RouteLayer` on the map behind it stops drawing
+            // this place's route immediately rather than leaving it stale
+            // until the next resolve.
+            routePreviewModel.reset()
+        }
     }
 
     private var header: some View {

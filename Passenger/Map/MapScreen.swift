@@ -103,6 +103,31 @@ struct MapScreen: View {
     @State private var savedPlacesStore = SavedPlacesStore()
     @State private var detailRouter = DetailRouter()
 
+    // scenic-walk (T-057): the 5-minute session memo, one instance for the
+    // app's lifetime (TRD §4.7, A2) — created here alongside the other
+    // session-scoped stores. `routePreviewModel` is `Optional` and populated
+    // in a `.task` below, the same lazy-construction pattern
+    // `permissionPrompt` already uses (§11), because its `init` needs
+    // `locationStore`/`routeMemoStore` and a `@State` property's default
+    // value can't reference another stored property on `self`. Once
+    // populated it is never replaced — "torn down on dismiss" (TRD §4.4) is
+    // implemented as `reset()` clearing its state, not as re-instantiation,
+    // matching how `detailRouter`/`savedPlacesStore` are already
+    // long-lived, mutated-in-place session objects rather than recreated
+    // per presentation.
+    @State private var routeMemoStore = RouteMemoStore()
+    @State private var routePreviewModel: RoutePreviewModel?
+
+    // scenic-walk (T-057, TRD §4.9, amendment A3): the camera's bottom inset
+    // is derived from these two measured heights, never a device constant.
+    // Both start at 0 (unmeasured); `fittedRegion` reads that as "no sheet
+    // height known yet" and fits with zero inset rather than guessing (A3's
+    // stated edge case), and `hasFitWithMeasuredSheetHeight` gates the one
+    // permitted re-fit once a real height arrives.
+    @State private var mapViewportHeight: CGFloat = 0
+    @State private var presentedSheetHeight: CGFloat = 0
+    @State private var hasFitWithMeasuredSheetHeight = false
+
     // places-been-saved (T-036): the second provenance source (§3.1) and the
     // one-surface-at-a-time chrome state T-032 owns (§2.2) — created here
     // because no other build order landed it first in this working tree; if
@@ -187,6 +212,16 @@ struct MapScreen: View {
                 isHovered: isHoodHovered(fill.hood)
             )
         }
+    }
+
+    /// scenic-walk TRD §1.2, §4.9, D9: drawn on the main map behind the
+    /// sheet, not in a mini-map inside it — the PRD's own req 1 bullet asks
+    /// that a route line be distinguishable from a Hood's outline at
+    /// neighborhood zoom, and Hood outlines exist only here. `nil` whenever
+    /// nothing has resolved yet, which renders nothing (TRD §9 row 1c).
+    private var fastAndScenicPlans: (fast: RoutePlan, scenic: RoutePlan?)? {
+        guard case .resolved(let fast, let scenicResult) = routePreviewModel?.preview else { return nil }
+        return (fast, try? scenicResult.get())
     }
 
     /// The Places list's read-time precedence merge (places-been-saved TRD
@@ -285,6 +320,15 @@ struct MapScreen: View {
                         EventLayer(event: event) { detailRouter.openEvent(event) }
                     }
                 }
+                // scenic-walk (T-057): the two route polylines, drawn on the
+                // main map behind the sheet (TRD §1.2, §4.9, D9). Absent
+                // whenever no place's route has resolved.
+                if let fastAndScenicPlans {
+                    RouteLayer(
+                        fast: fastAndScenicPlans.fast, scenic: fastAndScenicPlans.scenic,
+                        selection: routePreviewModel?.selection ?? .fast
+                    )
+                }
                 // Bound to authorization status, never to a tap (§8 D2) — the
                 // mockup's unconditional marker on a near-me tap while
                 // `.notDetermined` is a mockup bug, not a build target.
@@ -325,6 +369,15 @@ struct MapScreen: View {
             }
         }
         .ignoresSafeArea()
+        // scenic-walk (T-057, TRD §4.9, A3): the full-screen height the
+        // camera fit reasons about — measured here because this is the view
+        // `.ignoresSafeArea()` just expanded to fill the screen, not assumed
+        // from a device idiom. Routed through `measuringHeight` (defined
+        // below `body`), not an inline `.onGeometryChange` — this modifier
+        // chain was already at the type-checker's patience limit before
+        // this feature, and an inline generic call here reintroduced
+        // "unable to type-check this expression in reasonable time."
+        .measuringHeight { newHeight in mapViewportHeight = newHeight }
         .overlay(alignment: .top) {
             ColdOpenTitle(onFadeComplete: { permissionPrompt?.titleDidFinishFading() })
                 .padding(.top, 56)
@@ -479,42 +532,29 @@ struct MapScreen: View {
         }
         .sheet(isPresented: detailRouter.isDepth1Presented) {
             // Site A (TRD §4.2): one `.sheet` modifier, content switched
-            // rather than two sheets attached to the same view.
-            //
-            // `.environment()` is applied to *this* Group — the sheet's own
-            // content — not to the presenting view above (where it lived
-            // before qa's T-033/PAS-13 crash report). Root cause: `.sheet`'s
-            // content closure does not inherit `.environment(_:)` values set
-            // on the view that hosts `.sheet`, even when those modifiers
-            // appear earlier in the same chain (the "textbook" position).
-            // Confirmed by direct repro: with `.environment()` applied above
-            // `.sheet(...)` as it was, every tap that opened this sheet threw
-            // "No Observable object of type X found" from
-            // `SwiftUICore/Environment+Objects.swift`, 100% of the time, for
-            // every one of `PlaceCatalog`/`DetailRouter`/`SavedPlacesStore` —
-            // moving the same three calls to wrap the sheet's own content
-            // (here) fixes it with no other change. `HoodSheet`'s own nested
-            // `.sheet` (Site B, depth 2) needs the identical treatment for
-            // the same reason — see its own comment.
-            Group {
-                if let hood = detailRouter.hood {
-                    HoodSheet(hood: hood)
-                } else if let place = detailRouter.place {
-                    PlaceDetailModal(place: place)
-                } else if let event = detailRouter.event {
-                    // T-034 TRD §4.7, D6: a third depth-1 destination, not a
-                    // second `.sheet`. `EventDetailModal` is handed the
-                    // event by value and needs no new environment injection.
-                    EventDetailModal(event: event)
-                }
-            }
-            .environment(placeCatalog)
-            .environment(detailRouter)
-            .environment(savedPlacesStore)
-            .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+            // rather than two sheets attached to the same view. Pulled out
+            // into `depth1SheetContent()` (below `body`) rather than left
+            // inline — this closure's own branching plus the scenic-walk
+            // environment/geometry additions pushed `body`'s single giant
+            // expression back over the type-checker's patience limit
+            // ("unable to type-check this expression in reasonable time"),
+            // the same failure `measuringHeight` exists to prevent at its
+            // two call sites.
+            depth1SheetContent()
         }
         .task {
             permissionPrompt = PermissionPrompt(locationStore: locationStore)
+        }
+        .task {
+            // scenic-walk (T-057, TRD §4.4, A2): one instance for the app's
+            // lifetime, sharing this screen's own `locationStore` and
+            // `routeMemoStore` — populated here rather than at `@State`
+            // default-value time because a property initializer can't
+            // reference another stored property on `self` (same reason
+            // `permissionPrompt` above is `Optional` and set in a `.task`).
+            routePreviewModel = RoutePreviewModel(
+                provider: MapKitWalkingRouteProvider(), memo: routeMemoStore, locationStore: locationStore
+            )
         }
         .task {
             await loadHoods()
@@ -570,6 +610,43 @@ struct MapScreen: View {
                     await eventStore.refresh(anchorHour: densityStore.anchorHour)
                 }
             }
+            if newPhase == .background {
+                // scenic-walk (T-057, TRD §4.7): the session memo's only
+                // invalidation, from the same hook `densityStore`/
+                // `eventStore` already use, not a second observer.
+                routeMemoStore.clearAll()
+            }
+        }
+        .onChange(of: routePreviewModel?.preview) { _, newPreview in
+            // scenic-walk (T-057, TRD §4.9): fit the camera on the
+            // transition into `.resolved` — never on a route-control tap,
+            // which changes `selection`, not `preview`. A fresh `.resolved`
+            // means a fresh sheet presentation, so this is also the reset
+            // point for the one-time re-fit gate (A3): if the sheet's real
+            // height hasn't been measured yet, this first fit uses zero
+            // inset, and `presentedSheetHeight`'s own `onChange` below fires
+            // the single permitted re-fit once a real height arrives.
+            guard case .resolved = newPreview else { return }
+            hasFitWithMeasuredSheetHeight = false
+            fitCameraToResolvedRoute()
+        }
+        .onChange(of: presentedSheetHeight) { _, newHeight in
+            // The one re-fit A3 permits: only while the current preview is
+            // still `.resolved` (a route to fit), only once per
+            // presentation (`hasFitWithMeasuredSheetHeight` gates it), and
+            // only once a real height has actually arrived — not on the
+            // initial 0 the `@State` default already fired against.
+            guard case .resolved = routePreviewModel?.preview, !hasFitWithMeasuredSheetHeight, newHeight > 0 else { return }
+            fitCameraToResolvedRoute()
+        }
+        .onChange(of: detailRouter.isDepth1Presented.wrappedValue) { wasPresented, isPresented in
+            // Closing the sheet invalidates the height it just reported —
+            // otherwise the next place's first fit would silently reuse a
+            // stale measurement from whatever was presented before it.
+            if wasPresented, !isPresented {
+                presentedSheetHeight = 0
+                hasFitWithMeasuredSheetHeight = false
+            }
         }
         .onChange(of: locationStore.authorizationStatus) { oldStatus, newStatus in
             // Recenter on the *transition* into an authorized state, not on
@@ -595,6 +672,87 @@ struct MapScreen: View {
         let wasAuthorized = oldStatus == .authorizedWhenInUse || oldStatus == .authorizedAlways
         let isAuthorized = newStatus == .authorizedWhenInUse || newStatus == .authorizedAlways
         return !wasAuthorized && isAuthorized
+    }
+
+    // MARK: - scenic-walk (T-057) camera fit (TRD §4.9, amendment A3) —
+    // `fittedRegion`/`visibleAboveSheetFraction` are pure, testable static
+    // functions over plain values, same construction as `isNewGrant` above.
+    // `fitCameraToResolvedRoute` is the one instance method that reads this
+    // screen's own measured state and calls them.
+
+    /// The fraction of the screen left visible above the presented sheet,
+    /// derived from two **measured** heights (§9 row 12c requires this —
+    /// no device-specific pixel constant anywhere in this path). `nil`
+    /// before either height has been reported by `onGeometryChange`, which
+    /// `fittedRegion` reads as "fit with zero inset" (A3's stated edge
+    /// case: a resolve completing before first layout).
+    nonisolated static func visibleAboveSheetFraction(mapViewportHeight: CGFloat, presentedSheetHeight: CGFloat) -> Double? {
+        guard mapViewportHeight > 0, presentedSheetHeight > 0 else { return nil }
+        let visible = 1 - Double(presentedSheetHeight / mapViewportHeight)
+        // Clamped, not asserted: a sheet momentarily taller than the
+        // viewport (a transient layout pass) must not invert the fit.
+        return max(0.05, min(1.0, visible))
+    }
+
+    /// Fits the union of both polylines' bounding rects into the region
+    /// visible above the presented sheet (TRD §4.9) — the union sits in the
+    /// top `visibleAboveSheetFraction` of a taller region, not centred in
+    /// the full one, so it never renders under the sheet. `visibleAboveSheetFraction
+    /// == nil` (no measured heights yet) fits with zero inset — the whole
+    /// region, no reserved space — rather than guessing a fraction. `nil`
+    /// when there are no coordinates to fit (never called with an empty
+    /// fast route in practice, since `.resolved` always carries one, but
+    /// this is a system boundary — a malformed response — not an internal
+    /// invariant).
+    nonisolated static func fittedRegion(
+        fastCoordinates: [CLLocationCoordinate2D],
+        scenicCoordinates: [CLLocationCoordinate2D],
+        visibleAboveSheetFraction: Double?
+    ) -> MKCoordinateRegion? {
+        let allPoints = (fastCoordinates + scenicCoordinates).map(MKMapPoint.init)
+        guard !allPoints.isEmpty else { return nil }
+
+        let xs = allPoints.map(\.x)
+        let ys = allPoints.map(\.y)
+        let unionRect = MKMapRect(x: xs.min()!, y: ys.min()!, width: xs.max()! - xs.min()!, height: ys.max()! - ys.min()!)
+        var region = MKCoordinateRegion(unionRect)
+
+        // Breathing room around the route itself, before the sheet inset.
+        region.span.latitudeDelta *= 1.3
+        region.span.longitudeDelta *= 1.3
+
+        guard let fraction = visibleAboveSheetFraction else { return region }
+
+        // Bottom inset: expand the visible latitude span so the (padded)
+        // route occupies only the top `fraction` of it, then shift the
+        // centre south so the route stays in the top fraction rather than
+        // the middle of the taller region.
+        let requiredLatDelta = region.span.latitudeDelta / fraction
+        let extraLatDelta = requiredLatDelta - region.span.latitudeDelta
+        region.center.latitude -= extraLatDelta / 2
+        region.span.latitudeDelta = requiredLatDelta
+
+        return region
+    }
+
+    /// Reads this screen's own measured state and performs one fit. Called
+    /// from two triggers (see the `.onChange` pair above): the transition
+    /// into `.resolved`, and — if the sheet's real height wasn't known yet
+    /// at that point — once more when it arrives.
+    private func fitCameraToResolvedRoute() {
+        guard case .resolved(let fast, let scenicResult) = routePreviewModel?.preview else { return }
+        let scenicCoordinates = (try? scenicResult.get())?.coordinates ?? []
+        let fraction = Self.visibleAboveSheetFraction(
+            mapViewportHeight: mapViewportHeight, presentedSheetHeight: presentedSheetHeight
+        )
+        if fraction != nil {
+            hasFitWithMeasuredSheetHeight = true
+        }
+        if let region = Self.fittedRegion(
+            fastCoordinates: fast.coordinates, scenicCoordinates: scenicCoordinates, visibleAboveSheetFraction: fraction
+        ) {
+            camera = .region(region)
+        }
     }
 
     // MARK: - T-032 heat modal presentation wiring — same construction as
@@ -972,6 +1130,60 @@ struct MapScreen: View {
         .frame(width: EdgeGeometry.captureWidth)
     }
 
+    /// Site A's `.sheet` content (TRD §4.2) — pulled out of the inline
+    /// closure above for the type-checker reason stated there.
+    ///
+    /// `.environment()` is applied to *this* view — the sheet's own content
+    /// — not to the presenting view above (where it lived before qa's
+    /// T-033/PAS-13 crash report). Root cause: `.sheet`'s content closure
+    /// does not inherit `.environment(_:)` values set on the view that
+    /// hosts `.sheet`, even when those modifiers appear earlier in the same
+    /// chain (the "textbook" position). Confirmed by direct repro: with
+    /// `.environment()` applied above `.sheet(...)` as it was, every tap
+    /// that opened this sheet threw "No Observable object of type X found"
+    /// from `SwiftUICore/Environment+Objects.swift`, 100% of the time, for
+    /// every one of `PlaceCatalog`/`DetailRouter`/`SavedPlacesStore` —
+    /// moving the same three calls to wrap the sheet's own content (here)
+    /// fixes it with no other change. `HoodSheet`'s own nested `.sheet`
+    /// (Site B, depth 2) needs the identical treatment for the same reason
+    /// — see its own comment.
+    ///
+    /// scenic-walk (T-057): `routePreviewModel` is populated by the `.task`
+    /// in `body`, essentially immediately — before any tap could open this
+    /// sheet. Guarding with `if let` rather than force-unwrapping keeps
+    /// that an observed precondition instead of an assumed one; a sheet
+    /// opened in the one-frame gap before the `.task` runs simply renders
+    /// without route controls, and `PlaceDetailModal`'s own
+    /// `.noOrigin`/`.failed` fallback (unset `RoutePreviewModel` reads the
+    /// same as "not yet resolved") covers the rest.
+    @ViewBuilder
+    private func depth1SheetContent() -> some View {
+        if let routePreviewModel {
+            Group {
+                if let hood = detailRouter.hood {
+                    HoodSheet(hood: hood, hoods: hoods)
+                } else if let place = detailRouter.place {
+                    PlaceDetailModal(place: place, hoods: hoods)
+                } else if let event = detailRouter.event {
+                    // T-034 TRD §4.7, D6: a third depth-1 destination, not a
+                    // second `.sheet`. `EventDetailModal` is handed the
+                    // event by value and needs no new environment injection.
+                    EventDetailModal(event: event)
+                }
+            }
+            .environment(placeCatalog)
+            .environment(detailRouter)
+            .environment(savedPlacesStore)
+            .environment(routePreviewModel)
+            .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+            // scenic-walk (T-057, TRD §4.9, A3): the sheet's own rendered
+            // height, published up to `MapScreen` rather than assumed —
+            // this is what makes the camera's bottom inset track Dynamic
+            // Type and size class instead of a fixed constant (§9 row 12).
+            .measuringHeight { newHeight in presentedSheetHeight = newHeight }
+        }
+    }
+
     private func showSettingsHintTemporarily() {
         settingsHintDismissTask?.cancel()
         withAnimation { settingsHintVisible = true }
@@ -980,5 +1192,19 @@ struct MapScreen: View {
             guard !Task.isCancelled else { return }
             withAnimation { settingsHintVisible = false }
         }
+    }
+}
+
+// scenic-walk (T-057, TRD §4.9, A3): a monomorphized wrapper around
+// `onGeometryChange(for:of:action:)`, called from two points inside
+// `MapScreen.body`'s modifier chain. That chain was already at the Swift
+// type-checker's patience limit before this feature — inlining the generic
+// `onGeometryChange` call directly reintroduced "unable to type-check this
+// expression in reasonable time" (a real build failure, not a style
+// preference). A fully-typed helper gives the compiler a monomorphic call
+// site to resolve instead of one more term in the giant chain's inference.
+private extension View {
+    func measuringHeight(action: @escaping (CGFloat) -> Void) -> some View {
+        onGeometryChange(for: CGFloat.self, of: { $0.size.height }, action: action)
     }
 }

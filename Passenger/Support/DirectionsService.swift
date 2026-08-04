@@ -44,6 +44,15 @@ struct DirectionsService: Sendable {
     }
 }
 
+/// scenic-walk TRD §4.8: Apple Maps takes a destination, not an itinerary.
+/// There is no public API that carries an intermediate stop into it, so a
+/// scenic selection is always disclosed before the user leaves (PRD req 5).
+/// The hand-off itself gains no new parameter — `open(_:to:)` above is
+/// unchanged, walking mode only, exactly as T-033 built it.
+extension DirectionsService {
+    static let waypointDisclosure = "Maps gets the destination only — the scenic detour stays here."
+}
+
 /// `PlaceDetailModal(place:)` reads this from the environment (TRD §4.8). A
 /// plain `Sendable` struct with no observable state doesn't fit the
 /// `@Observable`/`@Environment(Type.self)` idiom `PlaceCatalog`/`DetailRouter`/
