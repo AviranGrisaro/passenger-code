@@ -129,4 +129,32 @@ struct MapScreenD8WiringTests {
 
         #expect(router.place == nil)
     }
+
+    /// PAS-42 (2026-08-04): `PlacesButton` no longer fades to
+    /// non-hit-testable while `.places` is open (it merged into the
+    /// always-visible `MapNavRow`), so the "can't be re-tapped to dismiss
+    /// its own list" protection D7 used to provide via invisibility now has
+    /// to be a real guard in `openPlacesList` itself. This is that guard's
+    /// only direct test — a re-tap while already open must be a true no-op,
+    /// not a `chrome.toggle` that closes the list, and must not call
+    /// `closeHood()` either (proven by leaving a Hood sheet open and
+    /// asserting it's still there).
+    @Test("PAS-42: re-tapping Places while its list is already open is a no-op")
+    func reopeningPlacesWhileAlreadyOpenIsANoOp() {
+        let router = DetailRouter()
+        let chrome = MapChromeState()
+        let ring = [MKMapPoint(x: 0, y: 0), MKMapPoint(x: 10, y: 0), MKMapPoint(x: 10, y: 10)]
+        chrome.toggle(.places)
+        router.openHood(Hood(
+            id: "florentin", name: "florentin", ring: ring,
+            boundingRect: MKMapRect(x: 0, y: 0, width: 10, height: 10),
+            centroid: MKMapPoint(x: 5, y: 5).coordinate,
+            blurb: nil, isTouristTrap: nil, designatedForProgression: false
+        ))
+
+        MapScreen.openPlacesList(router: router, chrome: chrome)
+
+        #expect(chrome.presented == .places, "a re-tap on an already-open list must not close it")
+        #expect(router.hood != nil, "a re-tap on an already-open list must be a true no-op, not partially run closeHood()")
+    }
 }

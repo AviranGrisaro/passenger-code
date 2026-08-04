@@ -358,15 +358,15 @@ struct MapScreen: View {
             edgeLayer(for: .trailing)
         }
         .overlay(alignment: .bottom) {
-            // Bucket-2 chrome (T-032 TRD §2.3): `NearMeButton`, `HoodButton`
-            // and `SettingsHint` all fade to invisible and stop accepting
-            // taps while any `NavSurface` is presented — the near-me
-            // cluster moved up out of the nav row's own band for exactly
-            // this reason (D1). `PlacesButton` already carries this
-            // treatment internally (`isFaded:`); the other three get it
-            // here rather than each growing a bespoke parameter, since none
-            // of them is used anywhere else in the app. Reduce Motion
-            // honoured via the same `withAnimation` that already governs
+            // Non-icon chrome only (T-032 TRD §2.3, amended PAS-42
+            // 2026-08-04): `HoodButton` (variable-width name capsule) and
+            // `SettingsHint` (variable-width text) still fade to invisible
+            // and stop accepting taps while any `NavSurface` is presented —
+            // that part of D1's original reasoning is untouched. What used
+            // to share this VStack — `NearMeButton`/`PlacesButton` — moved
+            // into `MapNavRow` below; see that type's header comment for why
+            // the row itself no longer fades. Reduce Motion honoured via the
+            // same `withAnimation` that already governs
             // `settingsHintVisible`'s own fade.
             VStack(spacing: 8) {
                 if settingsHintVisible {
@@ -378,22 +378,15 @@ struct MapScreen: View {
                         detailRouter.openHood(nearestHood)
                     }
                 }
-                HStack(spacing: 16) {
-                    NearMeButton(authorizationStatus: locationStore.authorizationStatus, action: handleNearMeTap)
-                    // Bucket-2 chrome (TRD §2.4, D7) — fades with the rest of
-                    // this cluster whenever any `NavSurface` is presented, so
-                    // it cannot be re-tapped to dismiss its own open list
-                    // (accepted cost, D7).
-                    PlacesButton(isFaded: chrome.isPresenting, action: openPlacesList)
-                }
             }
             .padding(.bottom, 32)
             .opacity(chrome.isPresenting ? 0 : 1)
             .allowsHitTesting(!chrome.isPresenting)
         }
         .overlay {
-            // z5 (TRD §2.4/§4.5). Above bucket-2 chrome, below the system
-            // sheet at Site A — a `.sheet` always presents above the whole
+            // z5 (TRD §2.4/§4.5). Above the remaining fading chrome
+            // (`HoodButton`/`SettingsHint`, PAS-42), below the system sheet
+            // at Site A — a `.sheet` always presents above the whole
             // hierarchy regardless of modifier order.
             if chrome.presented == .heat {
                 // T-032 TRD §4.2, D2, D4. Owns its own scrim, mirroring
@@ -435,14 +428,19 @@ struct MapScreen: View {
         .overlay(alignment: .bottom) {
             // z7 (TRD §2.3): always visible, always hit-testable, never
             // covered by this file's own z3/z4/z5 layers — drawn last among
-            // this file's overlays so it renders above all of them.
+            // this file's overlays so it renders above all of them. All 5
+            // icon buttons (PAS-42, 2026-08-04) — see `MapNavRow`'s header
+            // comment for why this row is where the merge landed.
             MapNavRow(
                 isHeatPresented: chrome.presented == .heat,
                 onHeatTap: handleHeatButtonTap,
                 isSearchPresented: chrome.presented == .search,
                 onSearchTap: handleSearchButtonTap,
                 isPassportPresented: chrome.presented == .profile,
-                onProfileTap: openPassport
+                onProfileTap: openPassport,
+                nearMeAuthorizationStatus: locationStore.authorizationStatus,
+                onNearMeTap: handleNearMeTap,
+                onPlacesTap: openPlacesList
             )
             .padding(.bottom, 96)
         }
@@ -607,7 +605,18 @@ struct MapScreen: View {
     /// list"). Closing the Hood sheet first stops a tap presenting the list
     /// *underneath* a still-open system sheet, in a layer that can never be
     /// reached.
+    ///
+    /// **Guarded against re-tap-while-open (PAS-42, 2026-08-04).** Before
+    /// the nav-row merge this was protected by `PlacesButton` fading to
+    /// non-hit-testable whenever `.places` was presented (D7); now that the
+    /// button never fades (`MapNavRow`'s header comment), the same
+    /// protection has to live here instead — a true no-op, not a
+    /// `chrome.toggle` that would close the list, so re-tapping the button
+    /// while its own list is open does nothing (the three other dismissal
+    /// paths on the list itself — ✕, drag, tap-outside-scrim — are
+    /// untouched and remain the only ways to close it).
     static func openPlacesList(router: DetailRouter, chrome: MapChromeState) {
+        guard chrome.presented != .places else { return }
         router.closeHood()
         chrome.toggle(.places)
     }

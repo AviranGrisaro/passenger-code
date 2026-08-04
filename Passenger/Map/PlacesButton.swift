@@ -1,14 +1,21 @@
 import SwiftUI
 
-/// The entry point to the Places list — bucket-2 chrome, **not** a nav-row
-/// button (TRD §2.4, D7, corrects T-032's own D1). Built to the existing
-/// `NearMeButton`/`HoodButton` chrome idiom: same bottom band, same
-/// materials. Joins that cluster and fades with it: while any `NavSurface`
-/// is presented this button fades to invisible and stops accepting taps, so
-/// it cannot be re-tapped to dismiss its own open list (the accepted cost
-/// named at D7 — three other dismissal paths exist on the list itself).
+/// The entry point to the Places list — a nav-row button (PAS-42,
+/// 2026-08-04: merged into `MapNavRow`, correcting T-036's own D7, which had
+/// corrected T-032's D1 the other way). Built to the existing
+/// `NearMeButton`/`HoodButton` chrome idiom: same 44×44 target, same
+/// `.thinMaterial` circle.
+///
+/// **No longer fades.** D7 originally faded this button to invisible
+/// whenever any `NavSurface` was presented, specifically so it couldn't be
+/// re-tapped to dismiss its own open list. PAS-42 merged it into the
+/// always-visible nav row instead (D1 wins for the row — see `MapNavRow`'s
+/// header comment for why), so that protection now lives as a guard in
+/// `MapScreen.openPlacesList` (a no-op while `.places` is already
+/// presented) rather than in this view's visibility. The three other
+/// dismissal paths D7 named (✕, drag-past-threshold, tap-outside-scrim) are
+/// unchanged.
 struct PlacesButton: View {
-    let isFaded: Bool
     let action: () -> Void
 
     var body: some View {
@@ -24,7 +31,5 @@ struct PlacesButton: View {
                 .background(.thinMaterial, in: Circle())
         }
         .accessibilityLabel("Places")
-        .opacity(isFaded ? 0 : 1)
-        .allowsHitTesting(!isFaded)
     }
 }
