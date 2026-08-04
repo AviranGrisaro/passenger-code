@@ -505,18 +505,7 @@ struct MapScreen: View {
                     // T-034 TRD §4.7, D6: a third depth-1 destination, not a
                     // second `.sheet`. `EventDetailModal` is handed the
                     // event by value and needs no new environment injection.
-                    //
-                    // T-052/PAS-40: the Hood display name is resolved here,
-                    // against the same `hoods` this screen already loads for
-                    // `HoodHitTester`/heat, and handed in by value — same
-                    // shape as `HoodSheet` being handed an already-resolved
-                    // `Hood` rather than a slug it looks up itself. Keeps
-                    // `EventDetailModal` free of a new environment read while
-                    // still never rendering `event.hoodID`'s raw slug. `nil`
-                    // when `event.hoodID` doesn't match any loaded Hood (a
-                    // valid state — `PlaceCatalog`'s bundled-seed loader
-                    // tolerates the same kind of orphan id) or is `nil` itself.
-                    EventDetailModal(event: event, hoodName: hoods.first(where: { $0.id == event.hoodID })?.name)
+                    EventDetailModal(event: event)
                 }
             }
             .environment(placeCatalog)

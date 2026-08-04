@@ -6,23 +6,13 @@ import SwiftUI
 /// `openHood`'s own swap-in-place behaviour.
 ///
 /// Handed a `LiveEvent` by value, so this needs no new environment
-/// injection beyond what's already applied at the sheet site.
-///
-/// **T-052/PAS-40 fix:** the original TRD §4.7 note here said this view
-/// rendered `event.hoodID`'s raw slug (`kerem-hateimanim`) because adding a
-/// `Hood` lookup would mean a new environment dependency. That traded a
-/// user-facing bug for an implementation-cleanliness concern that doesn't
-/// actually require the trade: `hoodName` below is resolved by the
-/// presentation site (`MapScreen`, which already holds the loaded `[Hood]`)
-/// and handed in by value, the same way `HoodSheet` is handed an
-/// already-resolved `Hood` rather than a slug — so this view still adds no
-/// environment read. `nil` when the id doesn't resolve to a loaded Hood (a
-/// valid, tolerated state — see `PlaceCatalog`'s own orphan-`hood_id`
-/// handling) or is `nil` itself; the hood row is simply omitted rather than
-/// falling back to the raw slug.
+/// injection beyond what's already applied at the sheet site — no `Hood`
+/// lookup for `event.hoodID`, which is why the hood row below renders the
+/// raw id rather than a looked-up display name (a post-ship polish item, not
+/// a functional gap: TRD §4.7 explicitly avoids adding an environment
+/// dependency here).
 struct EventDetailModal: View {
     let event: LiveEvent
-    let hoodName: String?
 
     @Environment(DetailRouter.self) private var router
     @Environment(\.directionsService) private var directionsService
@@ -86,22 +76,13 @@ struct EventDetailModal: View {
                     .foregroundStyle(.secondary)
             }
         case .hood:
-            // Keyed on `hoodName`, not `event.hoodID` — `EventDetailRows`
-            // still adds this row whenever `hoodID != nil` (a pure read of
-            // the raw field, unaffected by whether it resolves), but this
-            // view renders the *resolved* display name only, and renders
-            // nothing at all for an id that doesn't match a loaded Hood,
-            // rather than ever falling back to the raw slug (T-052/PAS-40).
-            if let hoodName {
-                Label(hoodName, systemImage: "map")
+            if let hoodID = event.hoodID {
+                Label(hoodID, systemImage: "map")
                     .foregroundStyle(.secondary)
             }
         case .category:
-            // T-052/PAS-40: never the raw pipeline string — `EventDetailRows.
-            // displayCategory` humanizes it (that's also where it's unit
-            // tested, since this view renders nothing to check).
             if let category = event.category {
-                Label(EventDetailRows.displayCategory(category), systemImage: "tag")
+                Label(category, systemImage: "tag")
                     .foregroundStyle(.secondary)
             }
         }

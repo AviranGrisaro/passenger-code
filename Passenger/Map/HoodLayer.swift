@@ -163,7 +163,7 @@ struct HoodLayer: MapContent {
     /// translucent-fill opacity steps (0.16/0.38/0.62) since a thin stroke
     /// at fill-strength alpha would be nearly invisible against the map.
     private var borderColor: Color {
-        guard let band else { return .secondary.opacity(0.35 * dimOpacity) }
+        guard let band else { return .secondary.opacity(min(0.35 * hoverGlow, 1) * dimOpacity) }
         let bandStrength = min(HeatPalette.opacity(for: band) + 0.35, 1)
         return HeatPalette.hue.opacity(min(bandStrength * hoverGlow, 1) * dimOpacity)
     }
