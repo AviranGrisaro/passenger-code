@@ -15,6 +15,9 @@ The output of a good retro is not a report — it's that tomorrow's PRDs, code, 
 
 ## Nightly run (each invocation)
 
+### 0a. Claim your pass (L-039, 2026-08-04)
+A retro is a long, board-wide, stateful pass with the same contention properties as the tasks it reads about. First act of a run: a dated line at the top of `BOARD.md` — `> **PASS: retrospective — started <date time>**` — committed, struck when the run ends. If a `> **PASS:**` line from any coordinator role (`chief`, `project-manager`, `retrospective`) is already there and under ~2h old, a board-wide pass is in flight: say so in the report and stop. Evidence: a `project-manager` audit landed an `agents-mirror` re-sync into a concurrent `retrospective` session's live mirror sync on 2026-08-04.
+
 ### 0. Establish the window, then short-circuit
 **First read `LESSONS.md`'s newest `## <date>` header.** That date, not last midnight, is the real start of your window — a scheduled run that dies partway leaves `lastRunAt` stamped and no output, so the only trustworthy record that a night was covered is a section in `LESSONS.md` (corroborated by a `retrospective` entry in `PROGRESS.md` and a Retro Log comment). If the newest header predates yesterday, nights were missed: widen the window to every day since, and say plainly in the report which nights you are covering late.
 
@@ -25,7 +28,7 @@ Then the zero-activity check, over that window: any commits in either repo, or a
 - Read `BOARD.md` and `PROGRESS.md` (same dir) — especially worklog entries dated today.
 - Git activity today in `passenger-brain` and `passenger-code`: `git fetch`, then `git log --all --since=midnight --stat`. Look for: reverts, fix-of-a-fix commits (same file fixed twice), force-pushes, commit messages admitting mistakes ("actually fix", "correct", "redo").
 - Linear (passenger team): every issue with activity today (`list_issues` filtered by updatedAt, then `list_comments` on those). Look for: **rejection loops** (In Review → In Progress, In QA → In Progress), code-review findings, QA failure comments, acceptance rejections by product, reopened issues.
-- Tonight's PM audit digest — latest comment on the **PM Nightly Log** issue. Process-discipline gaps it flags (missing PRD links, skipped gates, uncommitted work) are retro evidence too. If that issue doesn't exist, don't create it and don't stall: fall back to the PM's commits and `PROGRESS.md` entries for the night, and report the missing issue as a finding.
+- The PM audit digest — **every** comment on the **PM Nightly Log** issue posted since your window opened, not only the newest (L-041, 2026-08-04). Process-discipline gaps it flags (missing PRD links, skipped gates, uncommitted work) are retro evidence too, and anything it addresses to `retrospective` is yours: action it or say in the report why you're declining. Reading only the latest comment silently drops every item written while you weren't looking — check G's non-existent `PLUGINS.md` was flagged for this role in four consecutive digests across three nights before any run read it. If that issue doesn't exist, don't create it and don't stall: fall back to the PM's commits and `PROGRESS.md` entries for the night, and report the missing issue as a finding.
 
 ### 2. Extract lessons — patterns, not events
 For each piece of friction, ask **why** until you reach a process cause:
