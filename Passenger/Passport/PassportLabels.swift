@@ -3,10 +3,12 @@
 /// needed to prove the strings. Clause order follows
 /// `map-rendering-spec.md` §7's established construction.
 enum PassportLabels {
-    /// "Dr. Shakshuka, triangle sticker" — the sticker's **shape** word
-    /// (D12), never the raw `place_type`. `StickerShape.spokenName` is the
-    /// only source; T-042 §3.1 keeps `place_type` itself off every
-    /// user-facing surface, and this label does not reopen that.
+    /// "Dr. Shakshuka, cutlery sticker" — the sticker's **depiction** word
+    /// (D12, amended v3 §9 row 7(a)), never the raw `place_type` and never a
+    /// geometry word ("triangle sticker" is exactly what this exists to rule
+    /// out). `StickerShape.spokenName` is the only source; T-042 §3.1 keeps
+    /// `place_type` itself off every user-facing surface, and this label
+    /// does not reopen that.
     static func sticker(placeName: String, shape: StickerShape) -> String {
         "\(placeName), \(shape.spokenName) sticker"
     }

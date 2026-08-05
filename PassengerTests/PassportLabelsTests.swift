@@ -18,10 +18,10 @@ struct PassportLabelsTests {
         // closed vocabulary distinct from `place_type`.
     }
 
-    @Test("the TRD's own worked example")
+    @Test("the TRD's own worked example (amended v3, §9 row 7(a) — depiction, never a geometry word)")
     func trdExample() {
-        let label = PassportLabels.sticker(placeName: "Dr. Shakshuka", shape: .triangle)
-        #expect(label == "Dr. Shakshuka, triangle sticker")
+        let label = PassportLabels.sticker(placeName: "Dr. Shakshuka", shape: .cutlery)
+        #expect(label == "Dr. Shakshuka, cutlery sticker")
     }
 
     // MARK: - hoodProgress (count + Local state, always both)

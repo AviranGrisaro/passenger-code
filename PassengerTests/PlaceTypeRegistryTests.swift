@@ -58,8 +58,8 @@ struct PlaceTypeRegistryTests {
     @Test("a fixture registry resolves its own keys and degrades an unknown one")
     func fixtureRegistryResolvesItsOwnKeys() {
         let registry = PlaceTypeRegistry(resourceName: "place-types-test-fixture", bundle: Self.testBundle)
-        #expect(registry.shape(for: "cafe") == .circle)
-        #expect(registry.shape(for: "bar") == .diamond)
+        #expect(registry.shape(for: "cafe") == .cup)
+        #expect(registry.shape(for: "bar") == .glass)
         #expect(registry.shape(for: "does-not-exist") == .generic)
     }
 }
