@@ -44,6 +44,14 @@ When something's broken and you're not implementing a spec, work in this order �
 3. **Form a hypothesis** for *why* it fails before touching code.
 4. **Add the minimal logging/assertion needed to confirm it, then remove it** once the fix lands — no debug scaffolding in the diff.
 
+## Simulator facts (paid for once — don't re-derive them)
+
+Hard-won facts about *this machine and toolchain*, not about any one role. **Add new ones here, not to your own agent file** — a fact filed in the file of whoever discovered it is a fact the next role pays for again (L-046, 2026-08-05: `designer.md` carried a partial version of the first item below while `qa`, which runs the most simulator passes, had none and lost four rounds of T-038/`PAS-29` to it).
+
+- **The location-permission dialog survives a privacy grant on any simulator that has ever launched the app.** `simctl privacy <udid> grant location-always <bundle-id>` does not suppress it, and `terminate` does not clear it — a stale in-flight CoreLocation request persists at the springboard level. The order that works: **`simctl erase` → grant → first-ever install + launch.** T-038/`PAS-29` rounds 10–13 were BLOCKED on this; round 15 root-caused it and confirmed the fix with a UDID-scoped screenshot.
+- **`simctl io screenshot` returns a settled frame**, so it cannot capture motion — animation evidence needs `recordVideo` + `ffmpeg`.
+- **The interactive simulator-control MCP needs a human to approve a grant, so in an unattended run it is *absent*, not flaky.** "The user has not granted Claude access" in a scheduled/background session is not a retryable blocker and not grounds for BLOCKED — nobody is there to click it. Drive the app through XCUITest's own automation instead (a throwaway uncommitted test file, deleted before the session ends). Two `qa` sessions hit this hours apart on 2026-08-05; only one found the workaround, and the other left two P0 sub-checks uncaptured.
+
 ## Safety
 
 - Location data is sensitive: never log it, cache it unencrypted, or send it further than the feature needs. No real user location in tests or fixtures.
