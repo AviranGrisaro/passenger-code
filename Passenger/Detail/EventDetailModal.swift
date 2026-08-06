@@ -6,13 +6,18 @@ import SwiftUI
 /// `openHood`'s own swap-in-place behaviour.
 ///
 /// Handed a `LiveEvent` by value, so this needs no new environment
-/// injection beyond what's already applied at the sheet site — no `Hood`
-/// lookup for `event.hoodID`, which is why the hood row below renders the
-/// raw id rather than a looked-up display name (a post-ship polish item, not
-/// a functional gap: TRD §4.7 explicitly avoids adding an environment
-/// dependency here).
+/// injection beyond what's already applied at the sheet site. `hoodName` is
+/// the one exception (T-052/PAS-40, PRD req 4: "a Hood renders its display
+/// name, never its slug") — `LiveEvent.hoodID` is a raw slug with no `Hood`
+/// object attached, so the caller (`MapScreen`, which already holds the
+/// loaded `[Hood]` list) resolves it once and hands the display name in by
+/// value, the same "no new environment dependency" shape TRD §4.7 chose for
+/// everything else here. `nil` means the slug didn't resolve against the
+/// loaded Hood list — the row is omitted rather than falling back to the raw
+/// id, since showing the raw id is exactly what req 4 forbids.
 struct EventDetailModal: View {
     let event: LiveEvent
+    let hoodName: String?
 
     @Environment(DetailRouter.self) private var router
     @Environment(\.directionsService) private var directionsService
@@ -76,13 +81,20 @@ struct EventDetailModal: View {
                     .foregroundStyle(.secondary)
             }
         case .hood:
-            if let hoodID = event.hoodID {
-                Label(hoodID, systemImage: "map")
+            // `EventDetailRows.rows(for:)` includes `.hood` whenever
+            // `event.hoodID != nil` — that's the "a hood field is present"
+            // check. Whether it *renders* also requires the slug to have
+            // resolved to a display name (see the type doc comment above);
+            // an unresolved slug falls through this `if let` and the row
+            // draws nothing, same graceful-degradation shape every other
+            // optional field here already uses.
+            if let hoodName {
+                Label(hoodName, systemImage: "map")
                     .foregroundStyle(.secondary)
             }
         case .category:
             if let category = event.category {
-                Label(category, systemImage: "tag")
+                Label(EventDetailRows.displayCategory(category), systemImage: "tag")
                     .foregroundStyle(.secondary)
             }
         }

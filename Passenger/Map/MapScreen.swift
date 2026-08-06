@@ -1168,7 +1168,10 @@ struct MapScreen: View {
                     // T-034 TRD §4.7, D6: a third depth-1 destination, not a
                     // second `.sheet`. `EventDetailModal` is handed the
                     // event by value and needs no new environment injection.
-                    EventDetailModal(event: event)
+                    // `hoodName` (T-052/PAS-40) is resolved here, once, off
+                    // the `hoods` list this screen already loaded — a plain
+                    // value lookup, not a new environment dependency.
+                    EventDetailModal(event: event, hoodName: hoods.first(where: { $0.id == event.hoodID })?.name)
                 }
             }
             .environment(placeCatalog)

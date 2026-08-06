@@ -48,4 +48,24 @@ struct EventDetailRowsTests {
         let event = Self.event(venueName: nil, hoodID: nil, category: nil)
         #expect(EventDetailRows.rows(for: event) == [.name, .time])
     }
+
+    // MARK: - displayCategory (T-052/PAS-40: never render the raw pipeline string)
+
+    @Test("a single-word category is capitalized")
+    func singleWordCategoryIsCapitalized() {
+        #expect(EventDetailRows.displayCategory("music") == "Music")
+        #expect(EventDetailRows.displayCategory("market") == "Market")
+        #expect(EventDetailRows.displayCategory("outdoors") == "Outdoors")
+    }
+
+    @Test("hyphens and underscores become spaces before capitalization")
+    func hyphensAndUnderscoresBecomeSpaces() {
+        #expect(EventDetailRows.displayCategory("live-jazz") == "Live Jazz")
+        #expect(EventDetailRows.displayCategory("food_festival") == "Food Festival")
+    }
+
+    @Test("already-capitalized input is idempotent")
+    func alreadyCapitalizedIsIdempotent() {
+        #expect(EventDetailRows.displayCategory("Music") == "Music")
+    }
 }

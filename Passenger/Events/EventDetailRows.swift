@@ -19,4 +19,19 @@ enum EventDetailRows {
         if event.category != nil { rows.append(.category) }
         return rows
     }
+
+    /// T-052/PAS-40: `event.category` carries no fixed taxonomy the way
+    /// `Place`/`PlaceCategory` does — it's an arbitrary string from the
+    /// events pipeline (TRD §4.2: "if the pipeline supplies a category worth
+    /// trusting"), so there is no enum to render a `displayName` off of.
+    /// Humanizes the raw value instead of ever rendering it verbatim:
+    /// hyphens/underscores read as separators, not real characters, and
+    /// every word is capitalized ("live-jazz" -> "Live Jazz"). Pure, so
+    /// `EventDetailModal` needn't render anything to check it.
+    static func displayCategory(_ raw: String) -> String {
+        raw
+            .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+            .capitalized
+    }
 }
