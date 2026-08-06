@@ -28,5 +28,9 @@ struct HourReadout: View {
         // rather than three separate stops for what is one fact.
         .accessibilityElement(children: .combine)
         .accessibilityLabel(HourFormat.voiceOverValue(readout))
+        // Stable hook for UI tests, matching the `heatModalCardTitle`/
+        // `hourSlider` convention — lets a rendered layout test grab this
+        // row's real frame (T-032 F1 rebuild, 2026-08-03).
+        .accessibilityIdentifier("hourReadout")
     }
 }
