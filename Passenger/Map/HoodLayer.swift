@@ -155,14 +155,18 @@ struct HoodLayer: MapContent {
     }
 
     /// Design fix (2026-08-04): a Hood is marked by its border alone, never
-    /// by a filled interior — `fillColor` above is kept only for
-    /// `HoodLayerFillDimTests` and no longer reaches `body`. The color that
-    /// used to live in the interior fill now lives in this line instead: no
-    /// band still draws the old neutral hairline, a banded Hood's line
-    /// carries `HeatPalette.hue`, boosted well past `fillColor`'s own
-    /// translucent-fill opacity steps (0.16/0.38/0.62) since a thin stroke
-    /// at fill-strength alpha would be nearly invisible against the map.
-    private var borderColor: Color {
+    /// by a filled interior — `fillColor` above is kept only as a cheap
+    /// regression guard on a still-computed value and no longer reaches
+    /// `body`. The color that used to live in the interior fill now lives in
+    /// this line instead: no band still draws the old neutral hairline, a
+    /// banded Hood's line carries `HeatPalette.hue`, boosted well past
+    /// `fillColor`'s own translucent-fill opacity steps (0.16/0.38/0.62)
+    /// since a thin stroke at fill-strength alpha would be nearly invisible
+    /// against the map. Not `private`: `HoodLayerFillDimTests` reads this
+    /// directly to assert the dim reaches the channel `body` actually draws
+    /// — the same trade `fillColor` already made and documented
+    /// (search-quick-filters TRD §9 row 4, T-038/PAS-55, C15/D15).
+    var borderColor: Color {
         guard let band else { return .secondary.opacity(min(0.35 * hoverGlow, 1) * dimOpacity) }
         let bandStrength = min(HeatPalette.opacity(for: band) + 0.35, 1)
         return HeatPalette.hue.opacity(min(bandStrength * hoverGlow, 1) * dimOpacity)
