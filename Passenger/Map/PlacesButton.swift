@@ -20,17 +20,21 @@ struct PlacesButton: View {
 
     var body: some View {
         Button(action: action) {
-            // [ASSUMPTION] Icon deferred by the design spec (§8 D7's
-            // reference row names no exact symbol) — `list.bullet` reads as
-            // "your places list" without colliding with the per-place save
-            // glyph (`bookmark`/`bookmark.fill`, `PlaceDetailModal`) or the
-            // nearest-Hood glyph (`mappin.and.ellipse`, `HoodButton`).
-            Image(systemName: "list.bullet")
+            // T-078/`PAS-60` reopened (`nav-row-v2-redesign.md` §3):
+            // `list.bullet` → `bookmark.fill`, matching `PlaceDetailModal`'s
+            // own per-place save button (`isSaved ? "bookmark.fill" :
+            // "bookmark"`) exactly — closes a same-app two-glyphs-for-one-
+            // concept inconsistency (this button had no glyph collision with
+            // that one, `list.bullet` just wasn't the save/bookmark
+            // convention). No "saved" binary state of its own (it's a
+            // static entry point, not a toggle), so it's the filled variant
+            // permanently, reading as "your bookmarks" (Safari Reading
+            // List/Apple News/Apple Maps' own Saved Places convention).
+            Image(systemName: "bookmark.fill")
                 .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(Color.pink)
+                .foregroundStyle(Color.teal)  // §4 — analogous blue/indigo/teal family
                 .frame(width: 52, height: 52)  // Fitts's Law minimum (design-principles.md §2)
                 .background(.thinMaterial, in: Circle())
-                .overlay(Circle().strokeBorder(Color.pink.opacity(0.9), lineWidth: 1.5))
         }
         .accessibilityLabel("Places")
     }

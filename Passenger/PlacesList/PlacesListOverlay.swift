@@ -58,9 +58,23 @@ struct PlacesListOverlay: View {
             header
             content
         }
-        .background(Color("Surface"), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .padding(.horizontal, 8)
-        .padding(.bottom, 8)
+        // T-079/`PAS-73` (`modal-shape-standard.md`): full width, flush to
+        // the bottom edge, top-corners-only — matches the system `.sheet()`
+        // shape Group A already renders (`EventDetailModal`/
+        // `PlaceDetailModal`/`HoodSheet`), so both groups read as one
+        // family instead of the old floating/inset card. `MapNavRow` (z7,
+        // drawn last in `MapScreen`) still renders and stays hit-testable
+        // above this surface by z-order, not by this card stopping short of
+        // the row.
+        .background(
+            Color("Surface"),
+            in: UnevenRoundedRectangle(
+                topLeadingRadius: 20, bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0, topTrailingRadius: 20,
+                style: .continuous
+            )
+        )
+        .ignoresSafeArea(edges: .bottom)
     }
 
     private var dragHandle: some View {

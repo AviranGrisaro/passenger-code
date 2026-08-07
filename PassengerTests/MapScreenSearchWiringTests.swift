@@ -44,11 +44,11 @@ struct MapScreenSearchWiringTests {
         #expect(chrome.presented == .search)
     }
 
-    @Test("opening .search while .heat (or any other surface) is presented replaces it — chrome never stacks")
+    @Test("opening .search while .profile (or any other surface) is presented replaces it — chrome never stacks")
     func openSearchReplacesOtherSurface() {
         let router = DetailRouter()
         let chrome = MapChromeState()
-        chrome.toggle(.heat)
+        chrome.toggle(.profile)
 
         MapScreen.openSearch(router: router, chrome: chrome)
 
@@ -87,11 +87,11 @@ struct MapScreenSearchWiringTests {
         router.openHood(Self.makeHood(id: "florentin"))
 
         let oldValue = chrome.presented
-        chrome.toggle(.heat)
+        chrome.toggle(.profile)
         MapScreen.handlePresentedSurfaceChange(from: oldValue, to: chrome.presented, router: router)
 
         #expect(router.hood == nil)
-        #expect(chrome.presented == .heat)
+        #expect(chrome.presented == .profile)
     }
 
     @Test("switching from .search to .places also closes a place opened from a search result")
@@ -131,7 +131,7 @@ struct MapScreenSearchWiringTests {
         let router = DetailRouter()
         router.openPlace(Self.makePlace(id: "cafe"))
 
-        MapScreen.handlePresentedSurfaceChange(from: .places, to: .heat, router: router)
+        MapScreen.handlePresentedSurfaceChange(from: .places, to: .profile, router: router)
 
         #expect(router.place == nil)
     }

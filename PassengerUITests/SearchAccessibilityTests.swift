@@ -62,7 +62,16 @@ final class SearchAccessibilityTests: XCTestCase {
     func testSearchButtonAndChipsMeetMinimumTouchTarget() {
         openSearch()
 
-        meetsMinimumTarget(app.buttons["Search"], "SearchButton")
+        // T-078/`PAS-60` reopened: `SearchOverlay`'s own Search/Hour
+        // segmented control also renders a "Search"-labeled element once
+        // the overlay is open, making `app.buttons["Search"]` ambiguous —
+        // the nav-row button is the one that renders last in the
+        // accessibility tree (same disambiguation pattern
+        // `PlacesListInteractionTests` already uses for its two "Close"
+        // buttons).
+        let searchButtons = app.buttons.matching(NSPredicate(format: "label == 'Search'"))
+        XCTAssertGreaterThanOrEqual(searchButtons.count, 1, "No \"Search\" button found")
+        meetsMinimumTarget(searchButtons.element(boundBy: searchButtons.count - 1), "SearchButton")
         meetsMinimumTarget(app.buttons["Eat & Drink"], "Eat & Drink chip")
         meetsMinimumTarget(app.buttons["Things to do"], "Things to do chip")
     }

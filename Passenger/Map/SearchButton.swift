@@ -6,6 +6,11 @@ import SwiftUI
 /// `.thinMaterial` circle. Lives in `MapNavRow` (z7), not bucket-2 chrome —
 /// it must stay reachable while a `NavSurface` is presented, which is
 /// exactly what distinguishes the nav row from bucket-2 (T-032 D1).
+///
+/// **T-078/`PAS-60` reopened:** this button now also opens the map-hour
+/// slider — folded into `SearchOverlay` as its "Hour" segment
+/// (`nav-row-v2-redesign.md` §1). The old standalone `HeatButton` is
+/// deleted; `chrome.presented == .search` covers both segments.
 struct SearchButton: View {
     let isPresented: Bool
     let action: () -> Void
@@ -14,10 +19,9 @@ struct SearchButton: View {
         Button(action: action) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(Color.blue)
+                .foregroundStyle(Color.blue)  // T-078/`PAS-60` reopened §4 — analogous blue/indigo/teal family, ring dropped
                 .frame(width: 52, height: 52)  // Fitts's Law minimum (design-principles.md §2)
                 .background(.thinMaterial, in: Circle())
-                .overlay(Circle().strokeBorder(Color.blue.opacity(0.9), lineWidth: 1.5))
         }
         .accessibilityLabel("Search")
         .accessibilityAddTraits(isPresented ? [.isSelected] : [])

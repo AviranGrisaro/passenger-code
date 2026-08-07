@@ -119,18 +119,23 @@ final class PlacesListInteractionTests: XCTestCase {
 
     // MARK: - D8 co-presentation guard, live (TRD §4.6/§9 row 8b/8c)
 
-    func testOpeningPlacesWhileHeatOpenReplacesHeatWithPlaces() {
-        app.buttons["Heat"].tap()
-        XCTAssertTrue(app.sliders["hourSlider"].waitForExistence(timeout: 5), "Heat modal never opened")
+    /// T-078/`PAS-60` reopened: `HeatButton` is deleted — the Hour slider
+    /// now lives inside `SearchOverlay`'s "Hour" segment, reached via
+    /// `SearchButton`. `.search`/`.places` is still a `NavSurface`/system
+    /// presentation pair, so this remains a live D8 co-presentation check.
+    func testOpeningPlacesWhileSearchHourOpenReplacesItWithPlaces() {
+        app.buttons["Search"].tap()
+        app.buttons["Hour"].tap()
+        XCTAssertTrue(app.sliders["hourSlider"].waitForExistence(timeout: 5), "Hour segment never opened")
 
         app.buttons["Places"].tap()
 
-        XCTAssertTrue(app.buttons[closedRowLabel].waitForExistence(timeout: 5), "Places list never opened over an already-presented Heat modal")
-        XCTAssertFalse(app.sliders["hourSlider"].exists, "D8: a NavSurface and a system-level presentation must never co-present — the Heat modal should have closed when Places opened, not stacked underneath")
+        XCTAssertTrue(app.buttons[closedRowLabel].waitForExistence(timeout: 5), "Places list never opened over an already-presented Search/Hour surface")
+        XCTAssertFalse(app.sliders["hourSlider"].exists, "D8: a NavSurface and a system-level presentation must never co-present — SearchOverlay should have closed when Places opened, not stacked underneath")
     }
 
     /// NOTE (QA finding, non-blocking, filed below in the worklog): a raw
-    /// `app.buttons["Heat"].tap()` while a place-detail modal is stacked
+    /// `app.buttons["Search"].tap()` while a place-detail modal is stacked
     /// over the list is NOT physically reachable — confirmed via the
     /// xcresult accessibility snapshot of the failed first version of this
     /// test: the depth-1 `.sheet` at `.medium` occupies `{{8, 415}, {386,
@@ -147,7 +152,7 @@ final class PlacesListInteractionTests: XCTestCase {
     /// the nav row now genuinely on top of it (not a system sheet) — then
     /// switch surfaces from there. This test exercises exactly that path,
     /// which is what §9 row 8(c)'s "manual" layer can actually confirm live.
-    func testDismissingStackedPlaceModalRevealsListThenLeavingPlacesOpensHeat() {
+    func testDismissingStackedPlaceModalRevealsListThenLeavingPlacesOpensSearch() {
         app.buttons["Places"].tap()
         let closedRow = app.buttons[closedRowLabel]
         XCTAssertTrue(closedRow.waitForExistence(timeout: 5))
@@ -172,9 +177,9 @@ final class PlacesListInteractionTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["placeDetailTitle"].waitForExistence(timeout: 2), "Place-detail modal did not dismiss via its own close button")
         XCTAssertTrue(closedRow.waitForExistence(timeout: 5), "Dismissing the stacked place modal should reveal the list unchanged underneath (TRD §5) — the same row should still be there")
 
-        app.buttons["Heat"].tap()
+        app.buttons["Search"].tap()
 
-        XCTAssertTrue(app.sliders["hourSlider"].waitForExistence(timeout: 5), "Heat modal never opened when switching away from a bare (unstacked) Places list")
-        XCTAssertFalse(closedRow.exists, "D8: leaving .places must close the list, not leave it presented underneath Heat")
+        XCTAssertTrue(app.staticTexts["Search"].waitForExistence(timeout: 5), "SearchOverlay never opened when switching away from a bare (unstacked) Places list")
+        XCTAssertFalse(closedRow.exists, "D8: leaving .places must close the list, not leave it presented underneath Search")
     }
 }

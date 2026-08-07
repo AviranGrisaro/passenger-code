@@ -1,11 +1,22 @@
 import SwiftUI
 
 /// The z5 container (TRD §4.7, §2.3) — a `ZStack`-hosted overlay, **not**
-/// `.sheet()`, same reason and construction as T-032's heat modal (D1/D2
-/// there, reused): a system sheet covers the nav row and breaks
+/// `.sheet()`, same reason and construction as T-032's original heat modal
+/// (D1/D2 there, reused): a system sheet covers the nav row and breaks
 /// `ux-flows.md` §2.1's direct-switch rule. `MapScreen` owns its own z3
 /// tap-catcher for this surface (D3) — this view draws only the surface
 /// itself.
+///
+/// **T-078/`PAS-60` reopened (`nav-row-v2-redesign.md` §1):** this view now
+/// also owns the "Hour" segment — the map-hour slider that used to be its
+/// own standalone `HeatModalCard`/`HeatButton` surface. A top segmented
+/// control (`Search`/`Hour`, defaulting to `Search`) swaps the whole content
+/// area between the two; `chrome.presented == .search` covers both, since
+/// there is no longer an independent `.heat` chrome state. `HourReadout`/
+/// `HourSlider` are reused as private subviews of the Hour segment, not
+/// duplicated — `MapScreen` still owns the one `selectedHour` binding and
+/// the one `HourFormat.Readout`, threaded through exactly as it used to feed
+/// `HeatModalCard`.
 ///
 /// `SearchSheet/` knows no map and no router (TRD §2.2) — it renders
 /// `[SearchResult]` and reports a selection or a dismissal upward by
@@ -15,11 +26,30 @@ import SwiftUI
 struct SearchOverlay: View {
     @Bindable var session: SearchSession
     let results: [SearchResult]
+    @Binding var selectedHour: Int
+    let hourReadout: HourFormat.Readout
     let onSelect: (SearchResult) -> Void
     let onDismiss: () -> Void
 
+    /// The two segments this surface now covers (§1 above). `.search` is
+    /// the default — search is the higher-frequency action, per the design
+    /// spec's Hick's-Law reasoning; Hour stays one tap away, never hidden.
+    private enum Segment: Hashable {
+        case search, hour
+    }
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isExpanded = false
+    @State private var segment: Segment = .search
+
+    /// Same ceiling `HeatModalCard` used to apply to its own content (F2,
+    /// `PAS-51` finding 2) — `HourReadout`'s offset numeral and "next day"
+    /// pill still need a cap to avoid mid-token wrap at AX5, and this
+    /// surface's height is now a fixed screen fraction rather than
+    /// content-sized, so an uncapped Hour segment could clip inside it.
+    /// Scoped to the Hour segment's own content, not the whole overlay —
+    /// Search's result rows scroll and have no such ceiling today.
+    private static let maxDynamicTypeSize: DynamicTypeSize = .accessibility3
 
     /// Two heights, not system detents (D2) — this is an overlay, not a
     /// `.sheet`, per D1. `compact` is the fresh-open height.
@@ -36,16 +66,38 @@ struct SearchOverlay: View {
             let height = geometry.size.height * (isExpanded ? Self.expandedFraction : Self.compactFraction)
             VStack(alignment: .leading, spacing: 0) {
                 dragHandle
-                header
-                CategoryChipRow(filter: session.filter) { category in
-                    session.filter = session.filter.toggling(category)
+                segmentPicker
+                switch segment {
+                case .search:
+                    header
+                    CategoryChipRow(filter: session.filter) { category in
+                        session.filter = session.filter.toggling(category)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 4)
+                    resultsArea
+                case .hour:
+                    hourContent
                 }
-                .padding(.horizontal)
-                .padding(.top, 4)
-                resultsArea
             }
             .frame(width: geometry.size.width, height: height, alignment: .top)
-            .background(Color("Surface"), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            // Full width, top-corners-only (T-079/`PAS-73`,
+            // `modal-shape-standard.md` §"the fix") — matches the system
+            // `.sheet()` shape Group A already renders, so both groups read
+            // as one family. `.ignoresSafeArea(edges: .bottom)` keeps the
+            // card flush to the true bottom edge rather than floating above
+            // it; `MapNavRow` (z7, drawn last in `MapScreen`) still renders
+            // and stays hit-testable above this surface by z-order, not by
+            // this card stopping short of the row.
+            .background(
+                Color("Surface"),
+                in: UnevenRoundedRectangle(
+                    topLeadingRadius: 20, bottomLeadingRadius: 0,
+                    bottomTrailingRadius: 0, topTrailingRadius: 20,
+                    style: .continuous
+                )
+            )
+            .ignoresSafeArea(edges: .bottom)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
         .transition(
@@ -66,6 +118,20 @@ struct SearchOverlay: View {
             .contentShape(Rectangle())
             .gesture(DragGesture().onEnded(handleDragEnd))
             .accessibilityHidden(true)
+    }
+
+    /// Search/Hour, defaulting to `.search` (nav-row-v2-redesign.md §1) —
+    /// the single visible entry point that replaced the standalone Heat
+    /// button. A visible control, not a hidden gesture, per that spec's
+    /// Poka-Yoke reasoning.
+    private var segmentPicker: some View {
+        Picker("", selection: $segment) {
+            Text("Search").tag(Segment.search)
+            Text("Hour").tag(Segment.hour)
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal)
+        .padding(.top, 4)
     }
 
     private var header: some View {
@@ -109,6 +175,31 @@ struct SearchOverlay: View {
                 }
             }
         }
+    }
+
+    /// The Hour segment (T-078) — `HeatModalCard`'s former `header`/
+    /// `content`, reused as-is: same title, same close button, same
+    /// `HourReadout`/`HourSlider` pairing.
+    private var hourContent: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Map hour")
+                    .font(.title2.bold())
+                    .foregroundStyle(Color("MutedOnSurface"))
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("hourSegmentTitle")
+                Spacer()
+                closeButton
+            }
+            .padding()
+            VStack(alignment: .leading, spacing: 16) {
+                HourReadout(readout: hourReadout)
+                HourSlider(selectedHour: $selectedHour, readout: hourReadout)
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 24)
+        }
+        .dynamicTypeSize(...Self.maxDynamicTypeSize)
     }
 
     private func handleDragEnd(_ value: DragGesture.Value) {

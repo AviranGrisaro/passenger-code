@@ -83,7 +83,7 @@ struct MapScreenD8WiringTests {
         #expect(chrome.presented == .places)
     }
 
-    @Test("§9 row 8(c): toggling to .heat while the list is open and a place modal is stacked closes both, .heat is presented")
+    @Test("§9 row 8(c): toggling to .search while the list is open and a place modal is stacked closes both, .search is presented")
     func leavingPlacesClosesStackedPlaceModal() {
         let router = DetailRouter()
         let chrome = MapChromeState()
@@ -95,11 +95,11 @@ struct MapScreenD8WiringTests {
         ))
 
         let oldValue = chrome.presented
-        chrome.toggle(.heat)
+        chrome.toggle(.search)
         MapScreen.handlePresentedSurfaceChange(from: oldValue, to: chrome.presented, router: router)
 
         #expect(router.place == nil)
-        #expect(chrome.presented == .heat)
+        #expect(chrome.presented == .search)
     }
 
     @Test("opening the list (nil -> .places) does not close an unrelated place modal")

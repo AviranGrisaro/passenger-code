@@ -398,10 +398,18 @@ struct MapScreen: View {
                 .allowsHitTesting(false)
         }
         .overlay(alignment: .topTrailing) {
-            if densityStore.source == .cache {
-                CachedDataIndicator()
-                    .padding()
+            // T-078/`PAS-60` reopened (`nav-row-v2-redesign.md` §2):
+            // `NearMeButton` relocated here from `MapNavRow`, stacked above
+            // `CachedDataIndicator` — both are top-trailing chrome and need
+            // to coexist. Apple/Google-Maps-style placement, per Aviran's
+            // explicit top-right instruction.
+            VStack(alignment: .trailing, spacing: 8) {
+                NearMeButton(authorizationStatus: locationStore.authorizationStatus, action: handleNearMeTap)
+                if densityStore.source == .cache {
+                    CachedDataIndicator()
+                }
             }
+            .padding()
         }
         .overlay {
             // UI-test-only (see `isExposingCameraRegionForTests` above) —
@@ -488,16 +496,7 @@ struct MapScreen: View {
             // (`HoodButton`/`SettingsHint`, PAS-42), below the system sheet
             // at Site A — a `.sheet` always presents above the whole
             // hierarchy regardless of modifier order.
-            if chrome.presented == .heat {
-                // T-032 TRD §4.2, D2, D4. Owns its own scrim, mirroring
-                // `PlacesListOverlay`/`PassportSurface` — both of those
-                // views cite this type as the pattern they mirror.
-                HeatModalCard(
-                    selectedHour: selectedHourBinding,
-                    readout: currentReadout,
-                    onDismiss: { chrome.dismiss() }
-                )
-            } else if chrome.presented == .places {
+            if chrome.presented == .places {
                 PlacesListOverlay(
                     entries: placesListEntries,
                     onSelect: { place in detailRouter.openPlace(place) },
@@ -517,9 +516,15 @@ struct MapScreen: View {
                 // search-quick-filters TRD §4.7, §2.3. Two heights (D2), own
                 // drag handle, opaque `Color("Surface")` — the z3 tap-catcher
                 // above is a separate layer, not part of this view.
+                //
+                // T-078/`PAS-60` reopened: also carries the Hour segment
+                // (formerly `HeatModalCard`) — same `selectedHourBinding`/
+                // `currentReadout` this screen already fed to it.
                 SearchOverlay(
                     session: searchSession,
                     results: searchResults,
+                    selectedHour: selectedHourBinding,
+                    hourReadout: currentReadout,
                     onSelect: handleSearchResultSelection,
                     onDismiss: dismissSearch
                 )
@@ -528,18 +533,14 @@ struct MapScreen: View {
         .overlay(alignment: .bottom) {
             // z7 (TRD §2.3): always visible, always hit-testable, never
             // covered by this file's own z3/z4/z5 layers — drawn last among
-            // this file's overlays so it renders above all of them. All 5
-            // icon buttons (PAS-42, 2026-08-04) — see `MapNavRow`'s header
-            // comment for why this row is where the merge landed.
+            // this file's overlays so it renders above all of them. 3 icon
+            // buttons (T-078/`PAS-60` reopened, down from PAS-42's 5) — see
+            // `MapNavRow`'s header comment for the full history.
             MapNavRow(
-                isHeatPresented: chrome.presented == .heat,
-                onHeatTap: handleHeatButtonTap,
                 isSearchPresented: chrome.presented == .search,
                 onSearchTap: handleSearchButtonTap,
                 isPassportPresented: chrome.presented == .profile,
                 onProfileTap: openPassport,
-                nearMeAuthorizationStatus: locationStore.authorizationStatus,
-                onNearMeTap: handleNearMeTap,
                 onPlacesTap: openPlacesList
             )
             .padding(.bottom, 32)
@@ -675,8 +676,8 @@ struct MapScreen: View {
             camera = .userLocation(fallback: .region(Self.telAvivCityWide))
         }
         // C15 (TRD §11, `PAS-51` finding 1) — last in the chain so it
-        // applies to this whole subtree, including `HeatModalCard` and
-        // `MapNavRow`. `UITestOverrides.dynamicTypeSize` is `nil` on a
+        // applies to this whole subtree, including `SearchOverlay`'s Hour
+        // segment and `MapNavRow`. `UITestOverrides.dynamicTypeSize` is `nil` on a
         // normal launch, in which case this re-applies
         // `systemDynamicTypeSize` — the value already in effect — so a real
         // launch is unaffected.
@@ -776,37 +777,6 @@ struct MapScreen: View {
         }
     }
 
-    // MARK: - T-032 heat modal presentation wiring — same construction as
-    // `openPlacesList`/`openPassport` below: a pure/testable static function
-    // over the two objects it touches (TRD §4.1, §5).
-
-    /// `HeatButton`'s action. Closes any open Hood sheet first, for the same
-    /// reason `openPlacesList`/`openSearch`/`openPassport` do — D4 requires
-    /// the modal and a system sheet never be co-presented in either
-    /// direction. `chrome.toggle(.heat)` alone handles the re-tap-to-close
-    /// case, so unlike search there is no separate dismiss function.
-    static func openHeat(router: DetailRouter, chrome: MapChromeState) {
-        router.closeHood()
-        chrome.toggle(.heat)
-    }
-
-    private func handleHeatButtonTap() {
-        Self.openHeat(router: detailRouter, chrome: chrome)
-        if chrome.presented == .heat {
-            // D3, §4.5 item 2: re-anchor "now" on modal open — the second
-            // of the two new `refreshIfHourRolled()` call sites this task
-            // adds, alongside `EdgeHourZone`'s touch-down. Only fires when
-            // the toggle above just *opened* the modal, never when it
-            // closed an already-open one.
-            Task { await densityStore.refreshIfHourRolled() }
-        }
-    }
-
-    // No `.heat`-leaving analogue to `handlePresentedSurfaceChange` below:
-    // like Passport, the heat modal has no tappable row that opens a place
-    // or Hood destination, so there is structurally nothing for a
-    // leave-hook to clean up.
-
     // MARK: - places-been-saved (T-036) presentation wiring — pure/testable,
     // same construction as `isNewGrant` above: the side effect lives in a
     // static function over the two objects it touches, so §9 row 8(b)/(c)
@@ -892,6 +862,12 @@ struct MapScreen: View {
             dismissSearch()
         } else {
             Self.openSearch(router: detailRouter, chrome: chrome)
+            // T-078/`PAS-60` reopened: re-anchor "now" on open, same as the
+            // old standalone Heat modal did on its own open (D3, §4.5 item
+            // 2) — the Hour segment now folded into this same surface is
+            // one tap away from the moment this fires, rather than gated on
+            // a second, segment-specific open event.
+            Task { await densityStore.refreshIfHourRolled() }
         }
     }
 

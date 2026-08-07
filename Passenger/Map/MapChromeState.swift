@@ -9,13 +9,15 @@ import Foundation
 /// is touched again, this comment is the tripwire: diff the two before
 /// trusting either.
 ///
-/// Four cases, one view per surface. The four-member set is not invented
-/// here — `ux-flows.md` §2.1 locks it, and T-032's own commentary says the
-/// full set ships up front specifically to stop T-036/T-037/T-038 each
-/// inventing a private boolean. `.search` and `.profile` have no view in
-/// this task's diff — a case with no view ships nothing.
+/// Three cases, one view per surface. **`.heat` removed (T-078/`PAS-60`
+/// reopened, `nav-row-v2-redesign.md` §1):** the standalone heat/hour modal
+/// was folded into `SearchOverlay` as an in-surface segmented control
+/// (Search/Hour) — there is no longer an independent chrome state for it,
+/// `chrome.presented == .search` now covers both segments. The remaining
+/// three cases still trace to `ux-flows.md` §2.1's original set, just minus
+/// the one that no longer needs its own presentation slot.
 enum NavSurface: String, CaseIterable, Sendable, Identifiable {
-    case search, heat, places, profile
+    case search, places, profile
     var id: String { rawValue }
 }
 

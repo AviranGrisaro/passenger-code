@@ -47,14 +47,14 @@ struct PassportWiringTests {
 
     // MARK: - §9 row 2(b): switching away from Passport is one clean transition
 
-    @Test("toggling to .heat while Passport is open leaves .profile gone, .heat presented, no stacked state")
-    func switchingToHeatClosesPassportCleanly() {
+    @Test("toggling to .search while Passport is open leaves .profile gone, .search presented, no stacked state")
+    func switchingToSearchClosesPassportCleanly() {
         let chrome = MapChromeState()
         chrome.toggle(.profile)
 
-        chrome.toggle(.heat)
+        chrome.toggle(.search)
 
-        #expect(chrome.presented == .heat)
+        #expect(chrome.presented == .search)
     }
 
     // MARK: - §9 row 2(e), the structural proxy for row 2(d): nothing in this

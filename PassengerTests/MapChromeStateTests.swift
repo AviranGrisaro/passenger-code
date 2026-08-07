@@ -38,8 +38,8 @@ struct MapChromeStateTests {
     func toggleToDifferentSurfaceReplaces() {
         let chrome = MapChromeState()
         chrome.toggle(.places)
-        chrome.toggle(.heat)
-        #expect(chrome.presented == .heat)
+        chrome.toggle(.search)
+        #expect(chrome.presented == .search)
     }
 
     @Test("dismiss always clears, regardless of what was presented")

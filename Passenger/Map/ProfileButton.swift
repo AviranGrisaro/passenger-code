@@ -25,10 +25,9 @@ struct ProfileButton: View {
             // 1's grep, not by this choice.
             Image(systemName: "person.fill")
                 .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(Color.purple)
+                .foregroundStyle(Color.indigo)  // T-078/`PAS-60` reopened §4 — analogous blue/indigo/teal family, ring dropped
                 .frame(width: 52, height: 52)  // Fitts's Law minimum (design-principles.md §2)
                 .background(.thinMaterial, in: Circle())
-                .overlay(Circle().strokeBorder(Color.purple.opacity(0.9), lineWidth: 1.5))
         }
         .accessibilityLabel("Profile")
         .accessibilityAddTraits(isPresented ? [.isSelected] : [])
