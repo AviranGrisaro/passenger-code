@@ -49,6 +49,28 @@ struct SearchRowGrowthGuardTests {
         )
     }
 
+    @Test("CategoryChipRow has no .lineLimit and its Text run is .fixedSize(horizontal: false, vertical: true)")
+    func categoryChipRowGrowsRatherThanTruncates() throws {
+        // Mirrors searchResultRowGrowsRatherThanTruncates() above — same
+        // presence check, not just the absence-of-.lineLimit grep in
+        // noSearchViewCapsTextWithLineLimit() below. That grep only proves
+        // CategoryChipRow doesn't truncate; it never proved the chip label
+        // actually grows. T-038/PAS-29 F2 added the real .fixedSize fix at
+        // CategoryChipRow.swift's `Text(category.displayName)`
+        // (ios-code-reviewer, T-070/PAS-66 round 2: this test was missing).
+        let source = try Self.sourceOf("Passenger/SearchSheet/CategoryChipRow.swift")
+
+        #expect(!source.contains(".lineLimit("), "CategoryChipRow must never cap its own text — growth, not truncation, is the requirement")
+
+        let textRunCount = source.components(separatedBy: "Text(").count - 1
+        let fixedSizeCount = source.components(separatedBy: ".fixedSize(horizontal: false, vertical: true)").count - 1
+        #expect(textRunCount >= 1, "expected at least the one documented Text run (chip label)")
+        #expect(
+            fixedSizeCount == textRunCount,
+            "every Text run in CategoryChipRow must carry .fixedSize(horizontal: false, vertical: true) — found \(textRunCount) Text( call(s) but \(fixedSizeCount) matching .fixedSize modifier(s)"
+        )
+    }
+
     @Test("no file in the search feature caps its own text with .lineLimit")
     func noSearchViewCapsTextWithLineLimit() throws {
         let files = [
