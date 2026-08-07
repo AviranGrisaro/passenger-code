@@ -86,7 +86,10 @@ struct MapScreen: View {
     @State private var settingsHintVisible = false
     @State private var settingsHintDismissTask: Task<Void, Never>?
 
-    @State private var densityStore = DensityStore()
+    // C15 (TRD §11, `PAS-51` finding 4): `UITestOverrides.now` defaults to
+    // live `Date()` exactly like the `Date.init` default this replaced —
+    // pinned only under `-uiTestNow`, so a real launch is unaffected.
+    @State private var densityStore = DensityStore(now: UITestOverrides.now)
     @State private var locationStore = LocationStore()
     @State private var permissionPrompt: PermissionPrompt?
 
@@ -174,7 +177,12 @@ struct MapScreen: View {
     /// real wall clock, never cached.
     private var currentReadout: HourFormat.Readout {
         HourFormat.readout(
-            offset: densityStore.selectedHour, anchorHour: densityStore.anchorHour, now: Date(), calendar: .current
+            offset: densityStore.selectedHour, anchorHour: densityStore.anchorHour,
+            // C15 (TRD §11, `PAS-51` finding 4): pinned under `-uiTestNow`,
+            // live `Date()` otherwise — same seam as `densityStore` above,
+            // so the readout's "next day" pill and `densityStore`'s own
+            // anchor never disagree about what "now" is.
+            now: UITestOverrides.now(), calendar: .current
         )
     }
 
@@ -280,6 +288,12 @@ struct MapScreen: View {
     }
 
     @Environment(\.scenePhase) private var scenePhase
+    // C15 (TRD §11, `PAS-51` finding 1): read as the identity fallback for
+    // `UITestOverrides.dynamicTypeSize` below, so a normal launch (no
+    // `-uiTestDynamicTypeSize` argument) re-applies the same value the
+    // environment already carries — a no-op — rather than this file
+    // inventing a second default that could drift from SwiftUI's own.
+    @Environment(\.dynamicTypeSize) private var systemDynamicTypeSize
 
     var body: some View {
         MapReader { proxy in
@@ -660,6 +674,13 @@ struct MapScreen: View {
             guard Self.isNewGrant(from: oldStatus, to: newStatus) else { return }
             camera = .userLocation(fallback: .region(Self.telAvivCityWide))
         }
+        // C15 (TRD §11, `PAS-51` finding 1) — last in the chain so it
+        // applies to this whole subtree, including `HeatModalCard` and
+        // `MapNavRow`. `UITestOverrides.dynamicTypeSize` is `nil` on a
+        // normal launch, in which case this re-applies
+        // `systemDynamicTypeSize` — the value already in effect — so a real
+        // launch is unaffected.
+        .environment(\.dynamicTypeSize, UITestOverrides.dynamicTypeSize ?? systemDynamicTypeSize)
     }
 
     /// True exactly when a status change represents a first-time grant

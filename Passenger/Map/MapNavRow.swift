@@ -55,5 +55,13 @@ struct MapNavRow: View {
             NearMeButton(authorizationStatus: nearMeAuthorizationStatus, action: onNearMeTap)
             PlacesButton(action: onPlacesTap)
         }
+        // TRD §9 row 5b's own build note: this row's frame, as a whole,
+        // needs to be queryable from a UI test — `HeatModalCard.frame`
+        // vs. `MapNavRow.frame` is the whole of the row 5b (i) check. The
+        // individual buttons already carry their own labels
+        // ("Heat"/"Search"/"Profile"/etc.) for the F1 regression test; this
+        // is the container's own identity, not a replacement for those.
+        .accessibilityIdentifier("mapNavRow")
+        .accessibilityElement(children: .contain)
     }
 }

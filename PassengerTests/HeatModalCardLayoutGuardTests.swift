@@ -33,6 +33,14 @@ import Testing
 /// gap constant (e.g. reverting to a bare `.padding(.bottom, 8)`) fails fast
 /// in the unit suite rather than needing another live-rendered UI test run
 /// to catch.
+/// **v5 update (TRD `time-slider/TRD.md` §9, `PAS-51` findings 1/4):** these
+/// source-string checks are stated explicitly as a **regression backstop
+/// only** — they do **not** discharge row 5b or row 6(c), both of which
+/// require a rendered check. The real render checks now live in
+/// `PassengerUITests/HeatModalCardDynamicTypeCeilingTests`, driven by C15's
+/// `-uiTestDynamicTypeSize`/`-uiTestNow` launch-argument seam
+/// (`UITestOverrides`) rather than the simulator content-size override this
+/// file's own header below documents as dead on this toolchain.
 @Suite("HeatModalCard — F1/F2 structural guard (PAS-51)")
 struct HeatModalCardLayoutGuardTests {
     private static func sourceOfHeatModalCard() throws -> String {
