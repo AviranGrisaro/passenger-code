@@ -73,15 +73,23 @@ struct EventDetailModal: View {
     private var card: some View {
         VStack(alignment: .leading, spacing: 0) {
             dragHandle
-            VStack(alignment: .leading, spacing: 20) {
-                header
-                ForEach(EventDetailRows.rows(for: event), id: \.self) { row in
-                    rowView(for: row)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    header
+                    ForEach(EventDetailRows.rows(for: event), id: \.self) { row in
+                        rowView(for: row)
+                    }
+                    Spacer(minLength: 0)
+                    routeButton
                 }
-                Spacer(minLength: 0)
-                routeButton
+                .padding()
             }
-            .padding()
+            // Capped like `HoodSheet`'s own scrollable content (same 480pt
+            // ceiling, T-079/PAS-73 round-3 fix) — this card is now
+            // intrinsically sized, not detent-driven, so an uncapped card
+            // would expand to fill nearly the whole screen instead of
+            // leaving the map visible underneath it.
+            .frame(maxHeight: 480)
         }
         // Full width, flush to the bottom edge, top-corners-only — matches
         // Group B's own shape exactly (see that construction's comment for

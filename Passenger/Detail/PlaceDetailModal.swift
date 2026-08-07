@@ -85,15 +85,23 @@ struct PlaceDetailModal: View {
     private var card: some View {
         VStack(alignment: .leading, spacing: 0) {
             dragHandle
-            VStack(alignment: .leading, spacing: 20) {
-                header
-                categoryRow
-                touristTrapSlot
-                Spacer(minLength: 0)
-                RouteControls(model: routePreviewModel)
-                routeButton
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    header
+                    categoryRow
+                    touristTrapSlot
+                    Spacer(minLength: 0)
+                    RouteControls(model: routePreviewModel)
+                    routeButton
+                }
+                .padding()
             }
-            .padding()
+            // Capped like `HoodSheet`'s own scrollable content (same 480pt
+            // ceiling, T-079/PAS-73 round-3 fix) — this card is now
+            // intrinsically sized, not detent-driven, so an uncapped card
+            // would expand to fill nearly the whole screen instead of
+            // leaving the map visible underneath it.
+            .frame(maxHeight: 480)
         }
         // Full width, flush to the bottom edge, top-corners-only — matches
         // Group B's own shape exactly.
