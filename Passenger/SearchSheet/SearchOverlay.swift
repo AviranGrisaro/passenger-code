@@ -55,6 +55,31 @@ struct SearchOverlay: View {
     /// `.sheet`, per D1. `compact` is the fresh-open height.
     private static let compactFraction: CGFloat = 0.45
     private static let expandedFraction: CGFloat = 0.92
+    /// **T-077/`PAS-51` fix (TRD §9 row 5b(i)/(ii), §10):** the Hour
+    /// segment's compact height, taller than `compactFraction`. `MapNavRow`
+    /// floats over this card's true-bottom-flush region at a *fixed*
+    /// distance from the screen's bottom edge (T-079/`PAS-73`'s
+    /// `.ignoresSafeArea(edges: .bottom)` plus `MapScreen`'s
+    /// `.padding(.bottom, 32)` on `MapNavRow`, both constants, neither
+    /// scaling with Dynamic Type) — call that reserved band `R`. Because
+    /// `hourContent`'s header/readout/slider lay out top-down from the
+    /// card's own top edge, the only way to keep `HourSlider` clear of `R`
+    /// at `.accessibility3` is to give the card enough extra height that
+    /// its top edge — and everything measured from it — sits above `R`
+    /// with room to spare. **A bottom-side fix (padding, a smaller
+    /// `ScrollView` viewport, `.clipped()`) cannot do this on its own**:
+    /// content that fits without scrolling renders at a fixed distance
+    /// from the *top*, so shrinking or padding the space *below* it changes
+    /// nothing about where it lands — confirmed empirically, not assumed
+    /// (a first attempt padded the `ScrollView` instead of growing the
+    /// card, rebuilt and reran the UI test, and the reported `hourSlider`
+    /// frame was pixel-identical to the unpadded version). `0.55` was
+    /// picked with a wide empirical margin over the ~0.50 the AX3 overlap
+    /// actually needed, verified by rerunning
+    /// `testHourSegmentContentStaysUnoccludedAndContainedAcrossTextSizes`.
+    /// Scoped to `.hour` only — `.search`'s `resultsArea` already scrolls
+    /// arbitrarily long content and has no P0 tied to `compactFraction`.
+    private static let hourCompactFraction: CGFloat = 0.55
     /// Handle-drag distance past which the surface toggles height or
     /// dismisses (D2) — a Fitts's-Law-scale gesture threshold, not a literal
     /// system detent.
@@ -63,7 +88,8 @@ struct SearchOverlay: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let height = geometry.size.height * (isExpanded ? Self.expandedFraction : Self.compactFraction)
+            let compactFraction = segment == .hour ? Self.hourCompactFraction : Self.compactFraction
+            let height = geometry.size.height * (isExpanded ? Self.expandedFraction : compactFraction)
             VStack(alignment: .leading, spacing: 0) {
                 dragHandle
                 segmentPicker
@@ -199,6 +225,31 @@ struct SearchOverlay: View {
     /// The Hour segment (T-078) — `HeatModalCard`'s former `header`/
     /// `content`, reused as-is: same title, same close button, same
     /// `HourReadout`/`HourSlider` pairing.
+    ///
+    /// **T-077/`PAS-51` fix (TRD §9 row 5b(ii)/(iii), §10 "the fixed-height
+    /// card clips its own content instead of growing"):** two distinct
+    /// failures, two distinct fixes.
+    ///
+    /// **Containment** (`HourSlider` pushed past the card's own bottom
+    /// edge, which is also the screen's bottom edge): the readout/slider
+    /// pairing used to sit in a plain top-aligned `VStack`, which has no
+    /// notion of the card's fixed height and simply grows past it at large
+    /// text sizes. Wrapping it in a `ScrollView` does what `resultsArea`
+    /// does one case over — it accepts whatever height the parent `VStack`
+    /// actually gives it (see `hourCompactFraction`'s doc comment) and
+    /// clips/scrolls its own content instead of overflowing it.
+    /// `.clipped()` alone was rejected because it would silently crop the
+    /// slider rather than keep it reachable by scrolling.
+    ///
+    /// **Occlusion** (`HourSlider` landing inside `MapNavRow`'s fixed
+    /// bottom band even while still on-screen) is a *different* bug the
+    /// `ScrollView` alone does not fix: content that fits without
+    /// scrolling still renders at a position fixed by what's *above* it
+    /// (the header, `HourReadout`), not by how much room is left below —
+    /// so padding or shrinking the `ScrollView`'s own frame cannot move
+    /// `HourSlider` out of the band; only giving the card more headroom
+    /// above the band can. That's `hourCompactFraction`, defined above
+    /// `body`, doing the actual work here.
     private var hourContent: some View {
         VStack(spacing: 0) {
             HStack {
@@ -211,12 +262,14 @@ struct SearchOverlay: View {
                 closeButton
             }
             .padding()
-            VStack(alignment: .leading, spacing: 16) {
-                HourReadout(readout: hourReadout)
-                HourSlider(selectedHour: $selectedHour, readout: hourReadout)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    HourReadout(readout: hourReadout)
+                    HourSlider(selectedHour: $selectedHour, readout: hourReadout)
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 24)
             }
-            .padding(.horizontal)
-            .padding(.bottom, 24)
         }
         .dynamicTypeSize(...Self.maxDynamicTypeSize)
     }
