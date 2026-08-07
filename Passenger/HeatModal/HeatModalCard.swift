@@ -45,12 +45,19 @@ struct HeatModalCard: View {
     /// `Passenger/`, AX5 was reachable and `HourReadout`'s offset numeral
     /// wrapped mid-token ("+12"/"h" split across two lines) with the
     /// "next day" pill breaking across two lines inside its own capsule.
-    /// `.accessibility3` is the chosen ceiling — confirmed by rendering the
-    /// full "+12h · 11:00 · next day" readout at AX3, AX4, and AX5 on
-    /// device (screenshots in the T-032 rebuild's PR/worklog): SwiftUI
-    /// clamps every size above the cap back down to this view's rendered
-    /// AX3 layout, one unbroken line, both at "Now" and at a "next day"
-    /// offset. AX3 was picked as the narrowest cap that still reads
+    /// `.accessibility3` is the chosen ceiling. **Basis, corrected
+    /// 2026-08-07 (`qa`, `PAS-51` finding 2):** this is reasoned from
+    /// `.dynamicTypeSize(...)`'s documented clamping behavior — a range
+    /// upper bound caps the environment's `DynamicTypeSize` a view sees, so
+    /// content above `.accessibility3` renders exactly as it does *at*
+    /// `.accessibility3` — not confirmed by an on-device screenshot pass.
+    /// No such pass is recorded anywhere in `PROGRESS.md` or its archive
+    /// under T-032's F1/F2 rebuild; a prior version of this comment cited
+    /// screenshot evidence at AX3/AX4/AX5 that does not exist in this
+    /// repo's audit trail, and that claim has been removed rather than
+    /// left standing. A genuine rendered-and-observed check at AX5 is
+    /// still open — tracked as `PAS-51` finding 1 (TRD §9 row 5b's AX5
+    /// half). AX3 was picked as the narrowest cap that still reads
     /// comfortably large — not pushed lower — since nothing about this row
     /// forced a tighter ceiling once F1's occlusion was fixed separately.
     /// Scoped to this card's `VStack` alone, not the whole app —
@@ -106,6 +113,10 @@ struct HeatModalCard: View {
         .padding(.horizontal, 8)
         .padding(.bottom, Self.navRowBandHeight + Self.gapAboveNavRow)
         .dynamicTypeSize(...Self.maxDynamicTypeSize)
+        // TRD §9 row 5b's own build note: the card needs an identifier for
+        // its rendered frame to be queryable from a UI test (PAS-51 finding
+        // 5 — `HeatModalCard.frame.maxY` vs. the safe-area bottom).
+        .accessibilityIdentifier("heatModalCard")
     }
 
     private var dragHandle: some View {
