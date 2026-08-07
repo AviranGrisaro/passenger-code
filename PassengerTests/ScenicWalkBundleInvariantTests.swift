@@ -19,10 +19,17 @@ import Testing
 @Suite("Scenic Walk bundle invariants (req 8)")
 @MainActor
 struct ScenicWalkBundleInvariantTests {
-    @Test("the shipped bundle carries exactly 24 Hoods and at least 4 false-flagged, including the 3 authored for this fixture")
+    @Test("the shipped bundle's Hood count matches its own raw JSON entry count, and carries at least 4 false-flagged, including the 3 authored for this fixture")
     func falseFlagCountAndTotal() throws {
         let hoods = try HoodCatalog.load()
-        #expect(hoods.count == 24)
+
+        // Derived from the shipped resource itself rather than hardcoded
+        // (PAS-72): a literal total went stale once already when the Hood
+        // dataset was regenerated 24->44 (passenger-code 11cb097/036d7d1)
+        // without this test being updated. Reading the raw bundled JSON
+        // independently of `HoodCatalog.load()` also verifies the loader
+        // doesn't silently drop entries along the way.
+        #expect(hoods.count == Self.rawHoodEntryCount())
 
         let falseFlagged = hoods.filter { $0.isTouristTrap == false }
         #expect(falseFlagged.count >= 4)
@@ -47,6 +54,20 @@ struct ScenicWalkBundleInvariantTests {
             let centroidDistance = Self.distance(a.centroid, b.centroid)
             #expect(centroidDistance >= 800, "\(a.id) <-> \(b.id) centroid separation was \(centroidDistance)m")
         }
+    }
+
+    /// Counts `hoods` entries in the shipped `hoods-tel-aviv.json` directly
+    /// (bypassing `HoodCatalog.load()`'s decode/mapping), so the expectation
+    /// this suite checks against tracks whatever ships, not a number typed
+    /// into this file.
+    private static func rawHoodEntryCount() -> Int {
+        guard let url = Bundle.main.url(forResource: "hoods-tel-aviv", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let hoods = json["hoods"] as? [Any] else {
+            return -1 // deliberately mismatches any real hood count, failing the #expect above
+        }
+        return hoods.count
     }
 
     private static func pairs(of hoods: [Hood]) -> [(Hood, Hood)] {
