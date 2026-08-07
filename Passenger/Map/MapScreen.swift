@@ -834,12 +834,36 @@ struct MapScreen: View {
     /// tap-outside, re-tap) already call this directly; this `.onChange`
     /// hook is the backstop for the one path those can't reach — switching
     /// straight to another nav surface without dismissing search first.
+    ///
+    /// **`PAS-78` fix — `newValue != nil` guard added to the `.search`
+    /// branch.** `handleSearchResultSelection` now dismisses `chrome` (sets
+    /// `presented = nil`) in the same beat it opens the selected result's
+    /// own destination via `openPlace`/`openHood` — so by the time this
+    /// `.onChange`-driven call runs (deferred to the next view-update pass,
+    /// after both of those already happened), `oldValue == .search`,
+    /// `newValue == nil`, and `router` already holds the fresh destination
+    /// the tap was for. The old unconditional `closeHood()` here wiped that
+    /// destination out immediately, undoing the very selection that
+    /// triggered the dismiss — the actual second half of `PAS-78` (the
+    /// first half was `SearchOverlay`'s own `.ignoresSafeArea` scope, see
+    /// that file). Restricting the branch to `newValue != nil` — i.e. only
+    /// when leaving `.search` for *another surface*, not a full dismiss —
+    /// preserves every path this branch originally existed for
+    /// (`interruptingSearchClosesOpenDestination`,
+    /// `interruptingSearchClosesOpenPlace` in
+    /// `MapScreenSearchWiringTests.swift`, both `newValue: .profile`/
+    /// `.places`, still pass unchanged) while no longer clobbering a fresh
+    /// selection. Safe for the manual-dismiss-to-nil paths too (✕, drag,
+    /// tap-outside, re-tap): none of them open a router destination, so
+    /// `router` is already `nil` when they fire and skipping `closeHood()`
+    /// here is a no-op — those paths call `closeHood()` directly anyway,
+    /// via `dismissSearch()`, per this comment's own opening line.
     static func handlePresentedSurfaceChange(from oldValue: NavSurface?, to newValue: NavSurface?, router: DetailRouter) {
         guard oldValue != newValue else { return }
         if oldValue == .places {
             router.closePlace()
         }
-        if oldValue == .search {
+        if oldValue == .search, newValue != nil {
             router.closeHood()
         }
     }
@@ -899,8 +923,34 @@ struct MapScreen: View {
     /// completes the search). The Hood branch also pans the camera to fit
     /// the Hood, issued *before* `openHood` so the move is committed under
     /// the sheet rather than fighting it (§4.9).
+    ///
+    /// **`PAS-78` fix:** this path used to leave `chrome.presented ==
+    /// .search` set after a selection — `dismissSearch()`'s own doc comment
+    /// lists every *manual* dismiss path (✕, drag, tap-outside, re-tap) as
+    /// routing through `chrome.dismiss()`, but selection was never one of
+    /// them, despite this method's own doc comment above already asserting
+    /// "selection completes the search." `SearchOverlay` stayed mounted
+    /// underneath the newly-opened `PlaceDetailModal`/`HoodSheet` — usually
+    /// invisible, entirely covered by the modal on top of it — but still
+    /// present and hit-testable in the accessibility tree, which is what
+    /// `SearchResultRowTapInvestigationTests` actually caught (`"Search"`
+    /// `StaticText` still `.exists` after a selecting tap). **Not the same
+    /// mechanism the tests' own doc comment hypothesized** (`MapNavRow`
+    /// winning a hit-test) — that turned out not to be reproducible; the
+    /// real, dumped-live cause was two-fold: (1) `SearchOverlay`'s
+    /// `.ignoresSafeArea(edges: .bottom)` (its own file) ignored the
+    /// *keyboard's* safe area along with the container's, so with the
+    /// keyboard up a short result list's rows rendered underneath the
+    /// system keyboard's own topmost window, which silently swallows the
+    /// touch before the app ever sees it (fixed by scoping that call to
+    /// `.container`); (2) this method's missing `chrome.dismiss()`, fixed
+    /// here — `chrome.dismiss()` must run *before* `openPlace`/`openHood`,
+    /// not through `dismissSearch()`, since that helper also calls
+    /// `router.closeHood()`, which would immediately close the Hood sheet
+    /// this method just opened.
     private func handleSearchResultSelection(_ result: SearchResult) {
         searchSession.clear()
+        chrome.dismiss()
         switch result.kind {
         case .place(let place, _):
             detailRouter.openPlace(place)

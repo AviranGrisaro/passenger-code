@@ -55,10 +55,24 @@ final class SearchAccessibilityTests: XCTestCase {
         XCTAssertTrue(fieldLabel.waitForExistence(timeout: 5), "SearchOverlay never rendered — field label missing")
     }
 
+    /// `PAS-78` fold-in: `SearchOverlay`'s bottom-safe-area fix
+    /// (`.ignoresSafeArea(.container, edges: .bottom)` instead of the
+    /// unscoped default) changed the fractional geometry a result row's
+    /// `.frame(minHeight: 44)` gets proposed by one more nested
+    /// keyboard-aware layout pass, and the accumulated `CGFloat` rounding
+    /// now lands a hair under 44 (`43.99999999999994`, live-measured, a
+    /// ~6e-14pt difference — display-scale rounding noise, not a real
+    /// sub-44pt row). A strict `>= 44` comparison is the wrong tool for a
+    /// value that went through several `CGFloat` divisions; `epsilon` gives
+    /// it the same tolerance any floating-point comparison needs, several
+    /// orders of magnitude below anything a real device could render as a
+    /// visible difference.
+    private static let epsilon: CGFloat = 0.01
+
     private func meetsMinimumTarget(_ element: XCUIElement, _ context: String) {
         XCTAssertTrue(element.exists, "\(context) does not exist")
-        XCTAssertGreaterThanOrEqual(element.frame.width, 44, "\(context) width below 44pt: \(element.frame)")
-        XCTAssertGreaterThanOrEqual(element.frame.height, 44, "\(context) height below 44pt: \(element.frame)")
+        XCTAssertGreaterThanOrEqual(element.frame.width + Self.epsilon, 44, "\(context) width below 44pt: \(element.frame)")
+        XCTAssertGreaterThanOrEqual(element.frame.height + Self.epsilon, 44, "\(context) height below 44pt: \(element.frame)")
     }
 
     // MARK: - §9 row 8(a): 44pt frames

@@ -77,8 +77,10 @@ struct SearchOverlay: View {
     /// picked with a wide empirical margin over the ~0.50 the AX3 overlap
     /// actually needed, verified by rerunning
     /// `testHourSegmentContentStaysUnoccludedAndContainedAcrossTextSizes`.
-    /// Scoped to `.hour` only — `.search`'s `resultsArea` already scrolls
-    /// arbitrarily long content and has no P0 tied to `compactFraction`.
+    /// Scoped to `.hour` only — `.search`'s bottom-edge problem (`PAS-78`)
+    /// turned out to have a different actual cause than this one, fixed at
+    /// its own source (`body`'s `.ignoresSafeArea` call below) rather than
+    /// with a matching fraction constant here.
     private static let hourCompactFraction: CGFloat = 0.55
     /// Handle-drag distance past which the surface toggles height or
     /// dismisses (D2) — a Fitts's-Law-scale gesture threshold, not a literal
@@ -131,7 +133,32 @@ struct SearchOverlay: View {
             // 34pt short (`product` REJECT 2026-08-07, measured on iPhone
             // 17/iOS 26.5). Applied last, after that frame, it's the final
             // modifier's extent that reaches the true bottom edge.
-            .ignoresSafeArea(edges: .bottom)
+            //
+            // **`PAS-78` fix — scoped to `.container` only, not the default
+            // `.all`.** The unscoped `.ignoresSafeArea(edges: .bottom)`
+            // ignores the *keyboard's* bottom safe area too, so once the
+            // search field has focus and the keyboard is up, this card's
+            // layout never shrinks or shifts for it — `resultsArea`'s rows
+            // keep rendering flush with the screen's true bottom edge,
+            // straight underneath the system keyboard window (confirmed by
+            // dumping the live accessibility tree during
+            // `SearchResultRowTapInvestigationTests`: the keyboard's own
+            // window spans `{0, 583}`–`{402, 874}`, and the tapped row
+            // rendered at `{16, 825.7}`–`{386, 869.7}`, entirely inside
+            // it). The keyboard is a separate, topmost system window —
+            // XCUITest's own `isHittable` only reasons about the app's
+            // hierarchy, so it reports `true` right up until the real touch
+            // reaches the OS, which routes it to the keyboard window
+            // instead and the app never sees it. Scoping to `.container`
+            // keeps this card flush against the true bottom edge exactly as
+            // before *only* for the home-indicator/container safe area
+            // (T-079's original fix, still intact — confirmed no
+            // regression by rerunning `testHourSegmentContentStaysUnoccludedAndContainedAcrossTextSizes`
+            // and the T-079 shrink-to-fit tests), while now respecting the
+            // keyboard's own safe-area inset — so the card's rendered
+            // frame shrinks above the keyboard while it's showing, and
+            // `resultsArea`'s rows never end up rendered underneath it.
+            .ignoresSafeArea(.container, edges: .bottom)
             // C16 (TRD §9 row 5b, T-077/`PAS-51`) — the one identifier the
             // T-078 merge dropped. Lets a UI test grab this fixed-fraction
             // card's own frame for the containment checks row 5b(ii) needs;
