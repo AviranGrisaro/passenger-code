@@ -99,7 +99,11 @@ struct HoodSheet: View {
             // sized, not detent-driven, so an uncapped list would make
             // short Hoods and long Hoods produce very differently sized
             // cards.
+            // `.fixedSize` makes the frame clamp an *ideal* height instead of
+            // inflating a *proposed* one, so short content shrinks to fit
+            // instead of always claiming the full 480pt (PAS-77).
             .frame(maxHeight: 480)
+            .fixedSize(horizontal: false, vertical: true)
         }
         .background(
             Color("Surface"),

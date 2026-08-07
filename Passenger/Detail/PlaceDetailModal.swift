@@ -101,7 +101,11 @@ struct PlaceDetailModal: View {
             // intrinsically sized, not detent-driven, so an uncapped card
             // would expand to fill nearly the whole screen instead of
             // leaving the map visible underneath it.
+            // `.fixedSize` makes the frame clamp an *ideal* height instead of
+            // inflating a *proposed* one, so short content shrinks to fit
+            // instead of always claiming the full 480pt (PAS-77).
             .frame(maxHeight: 480)
+            .fixedSize(horizontal: false, vertical: true)
         }
         // Full width, flush to the bottom edge, top-corners-only — matches
         // Group B's own shape exactly.
