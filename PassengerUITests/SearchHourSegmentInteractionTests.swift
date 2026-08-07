@@ -29,6 +29,19 @@ import XCTest
 /// `SearchOverlayHourGuardTests` (`PassengerTests/`) keeps the
 /// source-level ceiling-constant guard as a regression backstop only — it
 /// does not discharge TRD §9 row 5b, which is why the checks below exist.
+///
+/// **Restructured post-REJECT (product, T-077/`PAS-51`, 2026-08-07):** row
+/// 5b's ≥44pt P0 check was originally folded into the same per-capture
+/// assertion helper as occlusion/containment/the positive control. Since
+/// `hourSlider` genuinely renders 31pt (disclosed, tracked separately at
+/// T-081/`PAS-76`) and `continueAfterFailure = false` aborts the rest of the
+/// *calling test method* on any failure, that one expected failure silently
+/// skipped the AX3 capture, the positive control, and the F2 wrap check —
+/// two prior gates (code-review, qa) read the resulting silence as "5 of 6
+/// passed". The ≥44pt check now runs in its own dedicated test methods,
+/// `testHourSegmentSliderMeetsMinimumTapTargetAtDefaultTextSize()` and
+/// `…AtAX3()`, each its own `XCTestCase` instance — its failure can no
+/// longer block anything else in this file.
 final class SearchHourSegmentInteractionTests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -265,9 +278,24 @@ final class SearchHourSegmentInteractionTests: XCTestCase {
         return capture
     }
 
-    /// Row 5b(i)–(iii) plus the positive control, run against one capture —
+    /// Row 5b(i)/(ii) plus the positive control, run against one capture —
     /// the row requires these "in captures (a) and (b) independently", so
     /// both call sites use this same body rather than duplicating it.
+    ///
+    /// **Deliberately excludes row 5b(iii), the ≥44pt P0 check** (product
+    /// REJECT, T-077/`PAS-51`, 2026-08-07): `hourSlider` genuinely renders
+    /// 31pt (the pre-disclosed, separately-tracked gap at T-081/`PAS-76` —
+    /// not fixed here). With `continueAfterFailure = false`, a failing
+    /// assertion aborts the *rest of the calling test method*, not just this
+    /// function — folding the ≥44pt check in here meant its expected
+    /// failure at the default capture silently swallowed the AX3 capture,
+    /// the positive control at both captures, and the F2 wrap check, and
+    /// both the prior code-review APPROVE and qa PASS read that silence as
+    /// "5 of 6 passed" when only one sub-check per capture had actually run.
+    /// The ≥44pt check now lives in its own test methods below
+    /// (`testHourSegmentSliderMeetsMinimumTapTargetAtDefaultTextSize` /
+    /// `…AtAX3`), each its own XCTestCase instance, so its failure can't
+    /// block anything outside itself.
     private func assertHourSegmentCapture(_ capture: HourSegmentCapture, label: String) {
         // (i) occlusion, restated on the content [v6] — never on the card,
         // which is deliberately flush against the true bottom edge with
@@ -285,7 +313,9 @@ final class SearchHourSegmentInteractionTests: XCTestCase {
         // (ii) containment [v6] — the failure mode this merge introduced:
         // `hourContent` has no `.clipped()`, so growth at AX3 can push
         // `hourSlider` toward and past the card's own bottom edge, which is
-        // also the screen's bottom edge.
+        // also the screen's bottom edge. Containment doesn't require the
+        // slider to actually meet the 44pt minimum, so it stays here rather
+        // than moving with (iii) below.
         XCTAssertTrue(
             capture.card.contains(capture.readout),
             "[\(label)] hourSegmentCard \(capture.card) does not contain hourReadout \(capture.readout)"
@@ -303,14 +333,6 @@ final class SearchHourSegmentInteractionTests: XCTestCase {
             "[\(label)] hourSlider \(capture.slider) falls outside the window frame \(capture.windowFrame)"
         )
 
-        // (iii) the P0 control is still a control at this capture's text
-        // size — req 6(b)'s ≥44pt stops being proved by the frame constant
-        // alone once the container stopped growing with content [v6].
-        XCTAssertGreaterThanOrEqual(
-            capture.slider.height, 44,
-            "[\(label)] hourSlider height \(capture.slider.height)pt is below the 44pt P0 minimum"
-        )
-
         // Positive control (§9 standing rule 2, corrected at v6): the real
         // VoiceOver phrase `HourFormat.voiceOverValue` assembles — never
         // the visual "+12h" short form, which `.accessibilityLabel`'s
@@ -322,6 +344,21 @@ final class SearchHourSegmentInteractionTests: XCTestCase {
         XCTAssertTrue(
             capture.readoutLabel.contains("next day"),
             "[\(label)] hourReadout.label \"\(capture.readoutLabel)\" is missing \"next day\" — the row is unrun, not passed"
+        )
+    }
+
+    /// Row 5b(iii): the P0 control is still a control at this capture's
+    /// text size — req 6(b)'s ≥44pt stops being proved by the frame
+    /// constant alone once the container stopped growing with content [v6].
+    /// Split out of `assertHourSegmentCapture` (see that method's doc
+    /// comment) so this check's own expected failure is visible on its own
+    /// merits and never silently blocks the other sub-checks. Deliberately
+    /// **not** wrapped in `XCTExpectFailure` — the point of this restructure
+    /// is that the gap stays a loud, reported failure, not a buried one.
+    private func assertHourSegmentSliderMeetsMinimumTapTarget(_ capture: HourSegmentCapture, label: String) {
+        XCTAssertGreaterThanOrEqual(
+            capture.slider.height, 44,
+            "[\(label)] hourSlider height \(capture.slider.height)pt is below the 44pt P0 minimum"
         )
     }
 
@@ -358,6 +395,28 @@ final class SearchHourSegmentInteractionTests: XCTestCase {
             ax3Capture.readout.height, oneLineCeiling,
             "hourReadout grew to \(ax3Capture.readout.height)pt at AX3 (default \(defaultCapture.readout.height)pt × \(scaleRatio) scale ratio → \(oneLineCeiling)pt ceiling) — no longer one line, the F2 wrap regression"
         )
+    }
+
+    /// Row 5b(iii) at default text size, isolated into its own test method
+    /// (product REJECT fix, T-077/`PAS-51`, 2026-08-07 — see
+    /// `assertHourSegmentCapture`'s doc comment for why). This check is
+    /// expected to fail: `hourSlider` renders 31pt here, not the required
+    /// ≥44pt (disclosed, tracked separately at T-081/`PAS-76`, not fixed by
+    /// this file). Its own `XCTestCase` instance means that failure cannot
+    /// abort any other test method in this file.
+    func testHourSegmentSliderMeetsMinimumTapTargetAtDefaultTextSize() {
+        let now = fixedNowArgument()
+        let capture = captureHourSegment(launchArguments: ["-uiTestNow", now])
+        assertHourSegmentSliderMeetsMinimumTapTarget(capture, label: "default")
+    }
+
+    /// Row 5b(iii) at the Hour segment's `.accessibility3` ceiling — same
+    /// isolation rationale as the default-text-size variant above. Also
+    /// expected to fail for the same 31pt reason.
+    func testHourSegmentSliderMeetsMinimumTapTargetAtAX3() {
+        let now = fixedNowArgument()
+        let capture = captureHourSegment(launchArguments: ["-uiTestNow", now, "-uiTestDynamicTypeSize", "accessibility3"])
+        assertHourSegmentSliderMeetsMinimumTapTarget(capture, label: "AX3")
     }
 
     /// Row 5b(b2)/6(c): a third capture requested at **AX5**, one step past
