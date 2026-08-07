@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 2,
-  "generatedAt": "2026-08-07T06:52:08Z",
+  "schemaVersion": 3,
+  "generatedAt": "2026-08-07T07:57:33Z",
   "city": "tel-aviv",
   "_attribution": "Hood boundary geometry in this dataset (see database/data/hoods-tel-aviv.source.json, per-row `provenance.source`) is derived in part from OpenStreetMap data, (c) OpenStreetMap contributors, available under the Open Database License (ODbL) 1.0 -- https://www.openstreetmap.org/copyright . Rows with provenance.source == 'manual' are hand-authored referencing real neighbourhood shapes/names, not an authoritative municipal or OSM source -- see the row's own provenance.sourceRef for what that means case by case. ODbL's attribution and share-alike-on-derived-databases obligations apply to the osm-sourced rows. Whether attribution must additionally be *displayed in-app* is not decided by this script -- it is Aviran's call (PAS-6 item 15; hood-dataset TRD sec 8 D8).",
   "hoods": [
@@ -59,7 +59,8 @@
       ],
       "blurb": "A historic district on Jaffa's northeastern edge, part residential and part light industrial -- long overshadowed by the neighbourhoods around it.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "afeka",
@@ -484,7 +485,8 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "ajami",
@@ -1345,7 +1347,10 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": [
+        "Givat Aliyah"
+      ]
     },
     {
       "id": "american-german-colony",
@@ -1402,7 +1407,8 @@
       ],
       "blurb": "Jaffa's 19th-century American-German Colony -- Templer-era stone houses and tree-lined streets a few minutes inland from the port, quieter than Old Jaffa itself.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "azorei-hen",
@@ -1459,7 +1465,8 @@
       ],
       "blurb": "A small north-side residential pocket near the Yarkon, named \"Hen Quarters\" -- ordinary apartment housing, no notable commercial strip.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "bavli",
@@ -1868,7 +1875,8 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "bitzaron",
@@ -1925,7 +1933,8 @@
       ],
       "blurb": "An east-side residential neighbourhood next to Yad Eliyahu, mostly 1950s-60s apartment blocks.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "ezra",
@@ -1982,7 +1991,8 @@
       ],
       "blurb": "A compact residential neighbourhood in the city's south, next to the Hatikva and Kfar Shalem areas.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "florentin",
@@ -2619,7 +2629,8 @@
       ],
       "blurb": "[PROVISIONAL] Tel Aviv's street-art-and-nightlife district — graffiti-covered walls, converted warehouses, and bars that fill up late.",
       "isTouristTrap": true,
-      "designatedForProgression": true
+      "designatedForProgression": true,
+      "aliases": []
     },
     {
       "id": "givat-hatmarim",
@@ -2948,7 +2959,8 @@
       ],
       "blurb": "Also known as Jaffa D -- a hillside residential district on Jaffa's eastern edge, ordinary apartment blocks rather than the old-town core tourists picture.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "haargazim",
@@ -3005,7 +3017,8 @@
       ],
       "blurb": "A small, historically working-class pocket in the southeast (the name means \"the crates,\" from its early informal housing) -- now ordinary low-rise residential.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "hadar-yosef",
@@ -3346,7 +3359,8 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "hamishtalah",
@@ -3663,7 +3677,8 @@
       ],
       "blurb": "A small northeast pocket named for a former plant nursery on the site -- quiet, low-density housing near Tzahala.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "hatikva",
@@ -4408,7 +4423,10 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": [
+        "Neve Tzahal"
+      ]
     },
     {
       "id": "jaffa",
@@ -4457,7 +4475,8 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "kerem-hateimanim",
@@ -4966,7 +4985,8 @@
       ],
       "blurb": null,
       "isTouristTrap": true,
-      "designatedForProgression": true
+      "designatedForProgression": true,
+      "aliases": []
     },
     {
       "id": "kiryat-shalom",
@@ -5331,7 +5351,8 @@
       ],
       "blurb": "A working-class residential district in the city's south, next to Hatikva -- rows of older apartment blocks, quiet outside its own local shops.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "kokhav-hatzafon",
@@ -5740,7 +5761,8 @@
       ],
       "blurb": "A newer high-rise residential pocket in the city's north, built up along Namir Road in the 2000s -- mostly apartment towers, not a destination in itself.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "lev-hair",
@@ -7269,7 +7291,8 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "maoz-aviv",
@@ -7574,7 +7597,8 @@
       ],
       "blurb": "A quiet north-side residential grid next to Ramat Aviv Gimel -- built mostly in the 1970s, with no commercial centre of note.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "montefiore",
@@ -8471,7 +8495,8 @@
       ],
       "blurb": null,
       "isTouristTrap": false,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "nachalat-yitzhak",
@@ -8796,7 +8821,8 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "neve-avivim",
@@ -9149,7 +9175,8 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "neve-barbur",
@@ -9738,7 +9765,8 @@
       ],
       "blurb": "A modest east-side residential pocket bordering the western part of the old Kfar Shalem area -- low-rise housing, not on anyone's sightseeing list.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "neve-eliezer",
@@ -10547,7 +10575,10 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": [
+        "Kfar Shalem"
+      ]
     },
     {
       "id": "neve-ofer",
@@ -11124,7 +11155,8 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "neve-shaanan",
@@ -11881,7 +11913,8 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "neve-tzedek",
@@ -12722,7 +12755,10 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": true
+      "designatedForProgression": true,
+      "aliases": [
+        "Shabazi"
+      ]
     },
     {
       "id": "nofei-yam",
@@ -13111,7 +13147,8 @@
       ],
       "blurb": "A residential strip along the northern coastline near Ramat Aviv HaHadasha -- newer apartment blocks that took the name \"sea views\" literally.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "old-north",
@@ -15724,7 +15761,8 @@
       ],
       "blurb": null,
       "isTouristTrap": false,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "ramat-aviv",
@@ -16193,7 +16231,10 @@
       ],
       "blurb": null,
       "isTouristTrap": false,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": [
+        "Ramat Aviv Aleph"
+      ]
     },
     {
       "id": "ramat-aviv-gimel",
@@ -16622,7 +16663,8 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "ramat-hachayal",
@@ -16883,7 +16925,10 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": [
+        "Yisgav"
+      ]
     },
     {
       "id": "ramat-hatayasim",
@@ -17152,7 +17197,8 @@
       ],
       "blurb": "Originally housing for air-force personnel (the name means \"Airmen's Heights\"), this small east-side pocket is now an ordinary residential neighbourhood.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "ramat-yisrael",
@@ -17209,7 +17255,8 @@
       ],
       "blurb": "A small residential pocket bordering Bitzaron in the city's east -- indistinguishable to a visitor from the blocks around it.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "ramot-tzahala",
@@ -17266,7 +17313,8 @@
       ],
       "blurb": "A hillside extension of Tzahala in the northeast -- detached housing, no commercial centre of its own.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "revivim",
@@ -17335,7 +17383,8 @@
       ],
       "blurb": "A small residential cluster in the city's north, mostly known to the people who live there rather than to visitors.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "shapira",
@@ -18020,7 +18069,8 @@
       ],
       "blurb": null,
       "isTouristTrap": false,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "shikun-lamed",
@@ -18421,7 +18471,8 @@
       ],
       "blurb": "A modest 1950s-60s public-housing estate (\"Building Complex L\") in the city's north, low-rise blocks predating the towers that now surround it.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "tel-baruch",
@@ -18814,7 +18865,8 @@
       ],
       "blurb": "A beachfront residential strip in the far north of the city, next to Tel Baruch Beach and the park of the same name -- quieter and more suburban than the central beaches.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "tzahala",
@@ -19503,7 +19555,8 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "tzahalon",
@@ -19960,7 +20013,8 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "tzamarot-ayalon",
@@ -20553,7 +20607,8 @@
       ],
       "blurb": "A small residential pocket named for the tree line along the Ayalon corridor -- mostly apartment blocks, with no commercial strip of its own.",
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     },
     {
       "id": "yad-eliyahu",
@@ -21142,7 +21197,8 @@
       ],
       "blurb": null,
       "isTouristTrap": null,
-      "designatedForProgression": false
+      "designatedForProgression": false,
+      "aliases": []
     }
   ]
 }
