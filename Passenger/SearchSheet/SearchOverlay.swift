@@ -106,6 +106,18 @@ struct SearchOverlay: View {
             // 17/iOS 26.5). Applied last, after that frame, it's the final
             // modifier's extent that reaches the true bottom edge.
             .ignoresSafeArea(edges: .bottom)
+            // C16 (TRD §9 row 5b, T-077/`PAS-51`) — the one identifier the
+            // T-078 merge dropped. Lets a UI test grab this fixed-fraction
+            // card's own frame for the containment checks row 5b(ii) needs;
+            // never used for a card-frame equality or separation assertion
+            // (§9 standing rule, new at v6) since this frame is identical at
+            // every text size by construction. `.accessibilityElement(children:
+            // .contain)` mirrors `MapNavRow`'s own identical need (`MapNavRow
+            // .swift`) — an identifier alone doesn't surface a plain SwiftUI
+            // container as a queryable element; `.contain` does, without
+            // hiding the segment picker/search field/slider children beneath it.
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("hourSegmentCard")
         }
         .transition(
             reduceMotion

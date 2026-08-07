@@ -41,8 +41,15 @@ struct MapNavRow: View {
         // needs to be queryable from a UI test. The individual buttons
         // already carry their own labels ("Search"/"Profile"/"Places") for
         // regression tests; this is the container's own identity, not a
-        // replacement for those.
-        .accessibilityIdentifier("mapNavRow")
+        // replacement for those. **Order matters here** (found live at
+        // C16, T-077/`PAS-51`): `.accessibilityElement(children: .contain)`
+        // must come *before* `.accessibilityIdentifier(...)` — the other
+        // way around, the identifier cascades onto each child button
+        // individually instead of binding to the row's own container
+        // element, and `app.otherElements["mapNavRow"]` never matches
+        // anything. `SearchOverlay`'s `hourSegmentCard` identifier (C16)
+        // uses this same order and was verified working first.
         .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("mapNavRow")
     }
 }

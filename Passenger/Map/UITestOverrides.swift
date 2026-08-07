@@ -15,13 +15,15 @@ import SwiftUI
 /// this file and `PassengerUITests`, same idiom as `MapScreen`'s existing
 /// `-uiTestZoomedIn`/`-uiTestExposeCameraRegion` seams.
 ///
-/// **[ASSUMPTION], load-bearing and unverified before this pass (TRD §10):**
+/// **[ASSUMPTION], load-bearing and confirmed at C16 (T-077/`PAS-51`, v6):**
 /// that `.environment(\.dynamicTypeSize, …)` applied here propagates into
-/// `HeatModalCard` and is then clamped by its own
-/// `.dynamicTypeSize(...maxDynamicTypeSize)` — standard SwiftUI environment
-/// behaviour, not previously observed live in this codebase. If a UI test
-/// finds it does not take effect, that is a **BLOCKED** disclosure on TRD
-/// §9 row 5b, not grounds to fall back to a source grep.
+/// `SearchOverlay`'s Hour segment (`HeatModalCard`'s successor,
+/// T-078/`PAS-60`) and is then clamped by its own
+/// `.dynamicTypeSize(...maxDynamicTypeSize)`, scoped to `hourContent` —
+/// standard SwiftUI environment behaviour, observed live by
+/// `SearchHourSegmentInteractionTests`'s rendered AX3/AX5 suite. If a future
+/// UI test finds it no longer takes effect, that is a **BLOCKED**
+/// disclosure on TRD §9 row 5b, not grounds to fall back to a source grep.
 enum UITestOverrides {
     /// `-uiTestDynamicTypeSize <size>` — one of `DynamicTypeSize`'s own case
     /// names (`xSmall`, `small`, `medium`, `large`, `xLarge`, `xxLarge`,
