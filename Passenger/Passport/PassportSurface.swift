@@ -65,13 +65,14 @@ struct PassportSurface: View {
             content
         }
         // T-079/`PAS-73` (`modal-shape-standard.md`): full width, flush to
-        // the bottom edge, top-corners-only — matches the system `.sheet()`
-        // shape Group A already renders (`EventDetailModal`/
-        // `PlaceDetailModal`/`HoodSheet`), so both groups read as one
-        // family instead of the old floating/inset card. `MapNavRow` (z7,
-        // drawn last in `MapScreen`) still renders and stays hit-testable
-        // above this surface by z-order, not by this card stopping short of
-        // the row.
+        // the bottom edge, top-corners-only — matches the shape the system
+        // sheet presenter (Group A: `EventDetailModal`/`PlaceDetailModal`/
+        // `HoodSheet`) already renders, so both groups read as one family
+        // instead of the old floating/inset card. `MapNavRow` (z7, drawn
+        // last in `MapScreen`) still renders and stays hit-testable above
+        // this surface by z-order, not by this card stopping short of the
+        // row. This surface still owns its own presentation (per the header
+        // comment above) — matching shape only, not adopting the presenter.
         .background(
             Color("Surface"),
             in: UnevenRoundedRectangle(

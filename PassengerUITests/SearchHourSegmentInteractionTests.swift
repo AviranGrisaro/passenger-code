@@ -133,10 +133,20 @@ final class SearchHourSegmentInteractionTests: XCTestCase {
 
         // Positive control (same reasoning `HeatModalCardLayoutTests` used):
         // an empty label still has a frame, and a non-intersection claim
-        // about nothing proves nothing.
+        // about nothing proves nothing. `readout.label` is the
+        // accessibility label `HourFormat.voiceOverValue` assembles
+        // ("+12 hours, 03:00, next day" — confirmed live, not assumed from
+        // `offsetLabel`'s own "+12h" short form, which is a different,
+        // visual-only string never surfaced to XCUITest once
+        // `.accessibilityElement(children: .combine)` plus an explicit
+        // `.accessibilityLabel` override are both in play).
         XCTAssertTrue(
-            readout.label.contains("+12h"),
-            "hourReadout rendered but its label \"\(readout.label)\" is missing the expected \"+12h\" offset token"
+            readout.label.contains("+12 hours"),
+            "hourReadout rendered but its label \"\(readout.label)\" is missing the expected \"+12 hours\" offset token"
+        )
+        XCTAssertTrue(
+            readout.label.contains("next day"),
+            "hourReadout rendered but its label \"\(readout.label)\" is missing the expected \"next day\" qualifier"
         )
 
         // `searchNavButton` (the property above) for the nav-row button —

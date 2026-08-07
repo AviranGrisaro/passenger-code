@@ -9,9 +9,17 @@ import XCTest
 /// second posture — no code path fetches on an hour change, so the budget
 /// is held before it is ever measured).
 ///
+/// **T-078/`PAS-60` reopened:** reaches `hourSlider` through
+/// `SearchOverlay`'s Hour segment now — `HeatButton` is deleted, so the
+/// path is Search → Hour instead of a dedicated Heat button. The signpost
+/// itself is unchanged: `HourSlider.adjust` still fires
+/// `HeatRepaintSignpost.begin()`/`endIfPending()` around
+/// `HeatComposition.fills(...)` regardless of which surface hosts the
+/// control.
+///
 /// **Simulator run only, in this build environment** — same caveat
 /// `ColdOpenPerformanceTests` states for its own on-device requirement.
-final class HeatRepaintPerformanceTests: XCTestCase {
+final class HourRepaintPerformanceTests: XCTestCase {
     func testHourRepaintSignpost() {
         let app = XCUIApplication()
         let options = XCTMeasureOptions()
@@ -22,9 +30,13 @@ final class HeatRepaintPerformanceTests: XCTestCase {
         ) {
             app.launch()
 
-            let heatButton = app.buttons["Heat"]
-            XCTAssertTrue(heatButton.waitForExistence(timeout: 5), "HeatButton never appeared")
-            heatButton.tap()
+            let searchButton = app.buttons["Search"]
+            XCTAssertTrue(searchButton.waitForExistence(timeout: 5), "SearchButton never appeared")
+            searchButton.tap()
+
+            let hourSegment = app.buttons["Hour"]
+            XCTAssertTrue(hourSegment.waitForExistence(timeout: 5), "Hour segment never appeared")
+            hourSegment.tap()
 
             let slider = app.sliders["hourSlider"]
             XCTAssertTrue(slider.waitForExistence(timeout: 5), "hourSlider never rendered")
