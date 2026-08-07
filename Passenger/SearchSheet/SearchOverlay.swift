@@ -84,11 +84,9 @@ struct SearchOverlay: View {
             // Full width, top-corners-only (T-079/`PAS-73`,
             // `modal-shape-standard.md` §"the fix") — matches the system
             // `.sheet()` shape Group A already renders, so both groups read
-            // as one family. `.ignoresSafeArea(edges: .bottom)` keeps the
-            // card flush to the true bottom edge rather than floating above
-            // it; `MapNavRow` (z7, drawn last in `MapScreen`) still renders
-            // and stays hit-testable above this surface by z-order, not by
-            // this card stopping short of the row.
+            // as one family. `MapNavRow` (z7, drawn last in `MapScreen`)
+            // still renders and stays hit-testable above this surface by
+            // z-order, not by this card stopping short of the row.
             .background(
                 Color("Surface"),
                 in: UnevenRoundedRectangle(
@@ -97,8 +95,17 @@ struct SearchOverlay: View {
                     style: .continuous
                 )
             )
-            .ignoresSafeArea(edges: .bottom)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            // `.ignoresSafeArea(edges: .bottom)` must be the outermost
+            // modifier — the true render-space extent it grants only
+            // applies to the frame it's attached to. Applied *before* the
+            // outer `.frame(maxWidth:maxHeight:alignment:)` (the original,
+            // rejected T-079 attempt), the outer frame re-derives its own
+            // bottom edge from the safe area regardless, and the card stops
+            // 34pt short (`product` REJECT 2026-08-07, measured on iPhone
+            // 17/iOS 26.5). Applied last, after that frame, it's the final
+            // modifier's extent that reaches the true bottom edge.
+            .ignoresSafeArea(edges: .bottom)
         }
         .transition(
             reduceMotion

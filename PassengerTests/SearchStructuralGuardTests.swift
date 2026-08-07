@@ -6,20 +6,30 @@ import Testing
 /// search-quick-filters TRD §9 row 5(c), §11 C14 — the "structural guard"
 /// half of C14 that `ios-code-reviewer` flagged as specified but not shipped
 /// (2026-08-03, APPROVE WITH MINORS, item 8): a grep-backed assertion that
-/// exactly two `.sheet(isPresented:` call sites exist app-wide, so PRD req 5
-/// bullet 3's depth ceiling is enforced by there being nowhere else for a
-/// third presentation site to hide (§4.9's own reasoning), not merely true
-/// today by inspection. Closed by `qa` at the T-038/PAS-29 QA pass rather
-/// than left as a property someone re-derives by eye next time.
+/// PRD req 5 bullet 3's depth ceiling is enforced by there being nowhere for
+/// a third presentation site to hide (§4.9's own reasoning), not merely true
+/// today by inspection.
+///
+/// **Count changed from 2 to 0 (T-079/`PAS-73` re-fix, 2026-08-07):** Site A
+/// (`MapScreen`) and Site B (`HoodSheet`'s nested depth-2 destination) both
+/// moved off `.sheet(isPresented:)` to a custom `ZStack` scrim+card overlay
+/// — on iOS 26 a system `.sheet()` renders as a floating card rounded on
+/// all 4 corners at every detent, not this app's required flush/full-width/
+/// top-corners-only shape (see `EventDetailModal.swift`'s doc comment for
+/// the measured detail). The underlying invariant this guard exists to
+/// protect — the depth ceiling itself, not the specific presentation
+/// mechanism — is untouched and still covered independently by
+/// `DetailRouterTests.depthNeverExceedsTwo`; this file only had to change
+/// because it happened to check that invariant via a now-obsolete proxy
+/// (call-site count), not because the ceiling moved.
 ///
 /// Same construction as `PassportAbsenceGateTests` (T-037): reads the actual
 /// Swift source via `#filePath`, resolved against the checkout on the build
 /// machine, and asserts on content directly rather than trusting that the
 /// module boundary holds by convention. Unlike that file, this guard is
 /// **app-wide**, not scoped to one feature's file list — TRD row 5(c) is an
-/// app-wide invariant ("exactly 2 call sites in view code" across
-/// `Passenger`, not just `Search/`/`SearchSheet/`), so a directory walk is
-/// the right shape here, not a fixed list.
+/// app-wide invariant across `Passenger`, not just `Search/`/`SearchSheet/`,
+/// so a directory walk is the right shape here, not a fixed list.
 @Suite("Search — structural guards (TRD §9 row 5c, §11 C14)")
 struct SearchStructuralGuardTests {
     private struct SourceHit: CustomStringConvertible {
@@ -72,18 +82,31 @@ struct SearchStructuralGuardTests {
         line.trimmingCharacters(in: .whitespaces).hasPrefix("///")
     }
 
-    @Test("§9 row 5(c): exactly two real `.sheet(isPresented:` call sites exist app-wide")
+    @Test("§9 row 5(c): zero real `.sheet(isPresented:` call sites exist app-wide (T-079/`PAS-73` re-fix: both moved to custom overlays)")
     func exactlyTwoSheetPresentationSites() throws {
         let allHits = try Self.findAppSourceLines(containing: ".sheet(isPresented:")
         let realCallSites = allHits.filter { !Self.isDocComment($0.text) }
         let docCommentMentions = allHits.filter { Self.isDocComment($0.text) }
 
+        // Was `== 2` (Site A in `MapScreen`, Site B in `HoodSheet`). T-079's
+        // re-fix moved both off `.sheet(isPresented:)` entirely — see this
+        // file's header comment — so the real invariant this guard protects
+        // (no *hidden* third presentation site) now reads as "the count of
+        // this specific API's call sites is 0," not "is 2." If a future
+        // change reintroduces a `.sheet(isPresented:` call site anywhere in
+        // `Passenger/`, this guard should fail again until it's a
+        // deliberate, reviewed decision — same protective purpose as
+        // before, updated proxy value.
         #expect(
-            realCallSites.count == 2,
-            "expected exactly 2 real `.sheet(isPresented:` call sites, found \(realCallSites.count): \(realCallSites)"
+            realCallSites.count == 0,
+            "expected zero real `.sheet(isPresented:` call sites (both moved to custom overlays by T-079/`PAS-73`), found \(realCallSites.count): \(realCallSites)"
         )
         // Named explicitly so a future reader sees the exclusion was a
-        // deliberate content check, not a missed count.
+        // deliberate content check, not a missed count. `DetailRouter.swift`
+        // still documents "Site A"/"Site B" by name in prose even though
+        // neither is a literal `.sheet` call site anymore — this assertion
+        // just confirms the doc-comment exclusion logic itself still has
+        // something real to exclude, not that call sites still exist.
         #expect(
             !docCommentMentions.isEmpty,
             "expected DetailRouter's own doc-comment mentions of the pattern to still exist and be excluded by content, not by file name"

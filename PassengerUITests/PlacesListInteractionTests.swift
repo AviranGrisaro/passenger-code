@@ -124,7 +124,7 @@ final class PlacesListInteractionTests: XCTestCase {
     /// `SearchButton`. `.search`/`.places` is still a `NavSurface`/system
     /// presentation pair, so this remains a live D8 co-presentation check.
     func testOpeningPlacesWhileSearchHourOpenReplacesItWithPlaces() {
-        app.buttons["Search"].tap()
+        app.buttons["Search and hours"].tap()
         app.buttons["Hour"].tap()
         XCTAssertTrue(app.sliders["hourSlider"].waitForExistence(timeout: 5), "Hour segment never opened")
 
@@ -135,13 +135,24 @@ final class PlacesListInteractionTests: XCTestCase {
     }
 
     /// NOTE (QA finding, non-blocking, filed below in the worklog): a raw
-    /// `app.buttons["Search"].tap()` while a place-detail modal is stacked
-    /// over the list is NOT physically reachable — confirmed via the
+    /// tap on the nav-row search button (`app.buttons["Search"]` at the
+    /// time this was written, since renamed to "Search and hours" by
+    /// `PAS-75`) while a place-detail modal is stacked over the list is NOT
+    /// physically reachable — confirmed via the
     /// xcresult accessibility snapshot of the failed first version of this
-    /// test: the depth-1 `.sheet` at `.medium` occupies `{{8, 415}, {386,
-    /// 451}}` (y 415-866), and `MapNavRow`'s buttons sit at y 700-744,
-    /// entirely inside that span. `.presentationBackgroundInteraction`
-    /// keeps the *state* reachable (no dimming/disabling), but a tap at a
+    /// test: the depth-1 `.sheet`, then at `.medium`, occupied `{{8, 415},
+    /// {386, 451}}` (y 415-866), and `MapNavRow`'s buttons sit at y
+    /// 700-744, entirely inside that span. T-079/`PAS-73`'s re-fix
+    /// (2026-08-07) dropped `.medium` in favor of `.large`-only across all
+    /// 3 depth-1 destinations (iOS 26 renders any partial-height detent as
+    /// an inset floating card, not this app's required flush/full-width
+    /// shape) — the sheet now covers even more of the screen than the
+    /// measurement above, so the same "not physically reachable" reasoning
+    /// holds at least as strongly; the exact numbers above are historical.
+    /// `.presentationBackgroundInteraction` used to keep the *state*
+    /// reachable (no dimming/disabling) at `.medium` — also removed with
+    /// `.medium` itself, since `.large` already fully covers the map behind
+    /// it (see `MapScreen.depth1SheetContent()`'s comment). But a tap at a
     /// point the sheet's own opaque content visually covers still hits the
     /// sheet, not what is structurally "underneath" it — this pre-dates
     /// T-036/PAS-42 (the same geometry held for the original bucket-2
@@ -177,7 +188,7 @@ final class PlacesListInteractionTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["placeDetailTitle"].waitForExistence(timeout: 2), "Place-detail modal did not dismiss via its own close button")
         XCTAssertTrue(closedRow.waitForExistence(timeout: 5), "Dismissing the stacked place modal should reveal the list unchanged underneath (TRD §5) — the same row should still be there")
 
-        app.buttons["Search"].tap()
+        app.buttons["Search and hours"].tap()
 
         XCTAssertTrue(app.staticTexts["Search"].waitForExistence(timeout: 5), "SearchOverlay never opened when switching away from a bare (unstacked) Places list")
         XCTAssertFalse(closedRow.exists, "D8: leaving .places must close the list, not leave it presented underneath Search")

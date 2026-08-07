@@ -43,7 +43,11 @@ final class SearchAccessibilityTests: XCTestCase {
         let map = app.maps.firstMatch
         XCTAssertTrue(map.waitForExistence(timeout: 5), "Map never appeared")
 
-        let searchButton = app.buttons["Search"]
+        // "Search and hours", not "Search" (`PAS-75`, T-079 re-fix,
+        // 2026-08-07): `SearchButton`'s VoiceOver label was renamed to stop
+        // colliding with `SearchOverlay`'s own "Search" segment label once
+        // the overlay is open — see that file's doc comment.
+        let searchButton = app.buttons["Search and hours"]
         XCTAssertTrue(searchButton.waitForExistence(timeout: 5), "SearchButton never appeared in MapNavRow")
         searchButton.tap()
 
@@ -64,14 +68,12 @@ final class SearchAccessibilityTests: XCTestCase {
 
         // T-078/`PAS-60` reopened: `SearchOverlay`'s own Search/Hour
         // segmented control also renders a "Search"-labeled element once
-        // the overlay is open, making `app.buttons["Search"]` ambiguous —
-        // the nav-row button is the one that renders last in the
-        // accessibility tree (same disambiguation pattern
-        // `PlacesListInteractionTests` already uses for its two "Close"
-        // buttons).
-        let searchButtons = app.buttons.matching(NSPredicate(format: "label == 'Search'"))
-        XCTAssertGreaterThanOrEqual(searchButtons.count, 1, "No \"Search\" button found")
-        meetsMinimumTarget(searchButtons.element(boundBy: searchButtons.count - 1), "SearchButton")
+        // the overlay is open. `PAS-75`'s fix (T-079 re-fix, 2026-08-07)
+        // renamed `SearchButton`'s own label to "Search and hours", so the
+        // two no longer collide — a direct lookup is unambiguous again,
+        // the `NSPredicate` disambiguation this comment used to describe is
+        // no longer needed.
+        meetsMinimumTarget(app.buttons["Search and hours"], "SearchButton")
         meetsMinimumTarget(app.buttons["Eat & Drink"], "Eat & Drink chip")
         meetsMinimumTarget(app.buttons["Things to do"], "Things to do chip")
     }

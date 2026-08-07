@@ -30,7 +30,10 @@ final class HourRepaintPerformanceTests: XCTestCase {
         ) {
             app.launch()
 
-            let searchButton = app.buttons["Search"]
+            // "Search and hours" — `PAS-75` renamed `SearchButton`'s label
+            // off "Search" to stop colliding with `SearchOverlay`'s own
+            // "Search" segment (T-079 re-fix, 2026-08-07).
+            let searchButton = app.buttons["Search and hours"]
             XCTAssertTrue(searchButton.waitForExistence(timeout: 5), "SearchButton never appeared")
             searchButton.tap()
 

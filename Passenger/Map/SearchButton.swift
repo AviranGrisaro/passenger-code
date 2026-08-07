@@ -23,7 +23,16 @@ struct SearchButton: View {
                 .frame(width: 52, height: 52)  // Fitts's Law minimum (design-principles.md §2)
                 .background(.thinMaterial, in: Circle())
         }
-        .accessibilityLabel("Search")
+        // "Search and hours", not "Search" (`PAS-75`, ridden along with
+        // T-079/`PAS-73`): since T-078/`PAS-60` folded the old `HeatButton`
+        // into `SearchOverlay`'s own "Search"/"Hour" segmented control, this
+        // button's own VoiceOver label collided with that control's
+        // "Search" segment label — both audible in the same screen once the
+        // overlay is open, since `MapNavRow` stays hit-testable underneath
+        // it by design. No visible change (the glyph is unchanged); this
+        // also happens to describe what the button now actually opens more
+        // accurately than "Search" alone did.
+        .accessibilityLabel("Search and hours")
         .accessibilityAddTraits(isPresented ? [.isSelected] : [])
     }
 }

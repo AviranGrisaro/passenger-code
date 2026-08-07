@@ -493,9 +493,14 @@ struct MapScreen: View {
         }
         .overlay {
             // z5 (TRD §2.4/§4.5). Above the remaining fading chrome
-            // (`HoodButton`/`SettingsHint`, PAS-42), below the system sheet
-            // at Site A — a `.sheet` always presents above the whole
-            // hierarchy regardless of modifier order.
+            // (`HoodButton`/`SettingsHint`, PAS-42), below Site A's overlay
+            // (T-079/`PAS-73` re-fix: Site A moved off `.sheet()` to a
+            // plain `.overlay` placed later in `body`'s modifier chain, so
+            // it's "below Site A" by code order now, not by a `.sheet`'s
+            // always-on-top presentation layer — moot in practice either
+            // way, since D8 presentation exclusivity means `chrome.presented`
+            // and `detailRouter`'s destinations are never both active at
+            // once).
             if chrome.presented == .places {
                 PlacesListOverlay(
                     entries: placesListEntries,
@@ -545,16 +550,26 @@ struct MapScreen: View {
             )
             .padding(.bottom, 32)
         }
-        .sheet(isPresented: detailRouter.isDepth1Presented) {
-            // Site A (TRD §4.2): one `.sheet` modifier, content switched
-            // rather than two sheets attached to the same view. Pulled out
-            // into `depth1SheetContent()` (below `body`) rather than left
-            // inline — this closure's own branching plus the scenic-walk
-            // environment/geometry additions pushed `body`'s single giant
-            // expression back over the type-checker's patience limit
-            // ("unable to type-check this expression in reasonable time"),
-            // the same failure `measuringHeight` exists to prevent at its
-            // two call sites.
+        .overlay(alignment: .bottom) {
+            // Site A (TRD §4.2), no longer a `.sheet` (T-079/`PAS-73`
+            // re-fix, `product` REJECT 2026-08-07): on iOS 26 a system
+            // `.sheet()` renders as a floating card rounded on all 4
+            // corners at every detent, including `.large` — not this app's
+            // required flush/full-width/top-corners-only shape (measured
+            // directly, not assumed; see `EventDetailModal`'s doc comment).
+            // `EventDetailModal`/`PlaceDetailModal`/`HoodSheet` now each own
+            // their own scrim/card presentation, so this is a plain
+            // `.overlay` — placed *after* z7's `MapNavRow` above, in the
+            // same position a `.sheet` used to occupy in this chain, so it
+            // still renders above the nav row and covers it exactly like
+            // before: this fix changes card shape/anchoring only, not
+            // whether the nav row stays reachable while a Site A
+            // destination is open (that's unrelated, pre-existing
+            // behavior, not something this pass was asked to change).
+            // Content switched between the 3 destinations rather than 3
+            // separate overlays, same reason it was one `.sheet` before —
+            // `depth1SheetContent()` (below `body`) is unchanged in that
+            // respect, only its own call site changed.
             depth1SheetContent()
         }
         .task {
@@ -785,8 +800,10 @@ struct MapScreen: View {
 
     /// `PlacesButton`'s action (TRD §2.4, §4.6, D8, flow §5 "Open the
     /// list"). Closing the Hood sheet first stops a tap presenting the list
-    /// *underneath* a still-open system sheet, in a layer that can never be
-    /// reached.
+    /// *underneath* a still-open Site A destination (T-079/`PAS-73` re-fix:
+    /// no longer literally a system sheet, but still a layer that renders
+    /// above z5 and can never be reached from underneath it — see that
+    /// overlay's own comment), in a layer that can never be reached.
     ///
     /// **Guarded against re-tap-while-open (PAS-42, 2026-08-04).** Before
     /// the nav-row merge this was protected by `PlacesButton` fading to
@@ -838,8 +855,9 @@ struct MapScreen: View {
     /// The search button's action when `.search` is not yet presented.
     /// Closes any open Hood sheet first, for the same reason
     /// `openPlacesList` does: presenting the overlay with one already open
-    /// would put it underneath a system sheet, in a layer that can never be
-    /// reached.
+    /// would put it underneath a still-open Site A destination (same
+    /// T-079/`PAS-73` re-fix note as `openPlacesList`'s identical comment),
+    /// in a layer that can never be reached.
     static func openSearch(router: DetailRouter, chrome: MapChromeState) {
         router.closeHood()
         chrome.toggle(.search)
@@ -928,8 +946,9 @@ struct MapScreen: View {
     /// below (§11 C7) — the one call site this function's open-path
     /// plumbing was always built and tested (§9 row 2(c)) for. Closing the
     /// Hood sheet first for the same reason as `openPlacesList`: a tap must
-    /// not present Passport *underneath* a still-open system sheet, in a
-    /// layer that can never be reached. `chrome.toggle(.profile)` alone
+    /// not present Passport *underneath* a still-open Site A destination
+    /// (same T-079/`PAS-73` re-fix note as `openPlacesList`'s identical
+    /// comment), in a layer that can never be reached. `chrome.toggle(.profile)` alone
     /// handles the re-tap-to-close case (`PassportWiringTests
     /// .openPassportTogglesClosedWhenAlreadyOpen`), so unlike search there
     /// is no separate dismiss function to route through.
@@ -1127,23 +1146,21 @@ struct MapScreen: View {
         .frame(width: EdgeGeometry.captureWidth)
     }
 
-    /// Site A's `.sheet` content (TRD §4.2) — pulled out of the inline
-    /// closure above for the type-checker reason stated there.
-    ///
-    /// `.environment()` is applied to *this* view — the sheet's own content
-    /// — not to the presenting view above (where it lived before qa's
-    /// T-033/PAS-13 crash report). Root cause: `.sheet`'s content closure
-    /// does not inherit `.environment(_:)` values set on the view that
-    /// hosts `.sheet`, even when those modifiers appear earlier in the same
-    /// chain (the "textbook" position). Confirmed by direct repro: with
-    /// `.environment()` applied above `.sheet(...)` as it was, every tap
-    /// that opened this sheet threw "No Observable object of type X found"
-    /// from `SwiftUICore/Environment+Objects.swift`, 100% of the time, for
-    /// every one of `PlaceCatalog`/`DetailRouter`/`SavedPlacesStore` —
-    /// moving the same three calls to wrap the sheet's own content (here)
-    /// fixes it with no other change. `HoodSheet`'s own nested `.sheet`
-    /// (Site B, depth 2) needs the identical treatment for the same reason
-    /// — see its own comment.
+    /// Site A's overlay content (TRD §4.2) — pulled out of the inline
+    /// closure above for the type-checker reason stated there. No longer a
+    /// `.sheet`'s content (T-079/`PAS-73` re-fix, `product` REJECT
+    /// 2026-08-07 — see `body`'s `.overlay` comment), but the explicit
+    /// `.environment()` re-application below is left in place rather than
+    /// relied-on-by-inheritance: this is the exact spot qa's T-033/PAS-13
+    /// crash traced to once (a `.sheet`'s content closure doesn't inherit
+    /// `.environment(_:)` set on the presenting view, even from the
+    /// "textbook" position earlier in the same chain), and while a plain
+    /// `.overlay` doesn't have that specific hazard — normal view embedding
+    /// does inherit environment — re-deriving that from first principles
+    /// every time this file is read is worse than one redundant, cheap
+    /// re-application. `HoodSheet`'s own embedded `PlaceDetailModal` (Site
+    /// B, depth 2) does the same, for the same reason — see its own
+    /// comment.
     ///
     /// scenic-walk (T-057): `routePreviewModel` is populated by the `.task`
     /// in `body`, essentially immediately — before any tap could open this
@@ -1175,8 +1192,16 @@ struct MapScreen: View {
             .environment(detailRouter)
             .environment(savedPlacesStore)
             .environment(routePreviewModel)
-            .presentationBackgroundInteraction(.enabled(upThrough: .medium))
-            // scenic-walk (T-057, TRD §4.9, A3): the sheet's own rendered
+            // No `.presentationBackgroundInteraction` here (T-079/`PAS-73`
+            // re-fix, `product` REJECT 2026-08-07) — that API only applies
+            // to a real `.sheet()`, and this is a plain `.overlay` now (see
+            // this property's own call site in `body`). It used to read
+            // `.enabled(upThrough: .medium)`; a custom overlay has no
+            // system-managed "interact with what's behind" concept at all —
+            // the card is opaque and fully covers the map behind it by
+            // construction, same net effect, just via a different
+            // mechanism (this is not a functional regression).
+            // scenic-walk (T-057, TRD §4.9, A3): the overlay's own rendered
             // height, published up to `MapScreen` rather than assumed —
             // this is what makes the camera's bottom inset track Dynamic
             // Type and size class instead of a fixed constant (§9 row 12).

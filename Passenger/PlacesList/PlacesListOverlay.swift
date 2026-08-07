@@ -43,6 +43,17 @@ struct PlacesListOverlay: View {
                         }
                 )
         }
+        // `.ignoresSafeArea(edges: .bottom)` belongs on the outer `ZStack`,
+        // not nested on `card` (T-079/`PAS-73` re-fix, `product` REJECT
+        // 2026-08-07) — a child's `ignoresSafeArea()` only extends the
+        // render space of the frame it's directly attached to, and `card`
+        // here is an intrinsically-sized `VStack` aligned to the ZStack's
+        // bottom edge, not a frame that itself reaches the screen edge.
+        // Applied to the `ZStack` (the container `card` is aligned within),
+        // the whole layer's true bottom edge moves to the screen's actual
+        // last pixel row, and `card`'s `.bottom` alignment follows it there.
+        // Measured 34pt short (the home-indicator inset) before this fix.
+        .ignoresSafeArea(edges: .bottom)
         // Reduce Motion collapses the transition to 0 duration rather than
         // skipping the state change (TRD §4.5) — the view is still
         // inserted/removed, it just doesn't animate doing so.
@@ -65,7 +76,8 @@ struct PlacesListOverlay: View {
         // family instead of the old floating/inset card. `MapNavRow` (z7,
         // drawn last in `MapScreen`) still renders and stays hit-testable
         // above this surface by z-order, not by this card stopping short of
-        // the row.
+        // the row. (`.ignoresSafeArea` itself lives on `body`'s outer
+        // `ZStack`, not here — see that modifier's comment for why.)
         .background(
             Color("Surface"),
             in: UnevenRoundedRectangle(
@@ -74,7 +86,6 @@ struct PlacesListOverlay: View {
                 style: .continuous
             )
         )
-        .ignoresSafeArea(edges: .bottom)
     }
 
     private var dragHandle: some View {

@@ -3,6 +3,17 @@ import SwiftUI
 /// The depth-1-or-2 place destination (TRD §4.8, §4.2). Nothing else in this
 /// modal navigates anywhere (PRD req 3) — no closed-place badge, no
 /// provenance word, no Places-list row; all T-036's.
+///
+/// **No longer presented via `.sheet()` (T-079/`PAS-73` re-fix)** — see
+/// `EventDetailModal`'s identical doc comment for the full iOS 26 Liquid
+/// Glass rationale (a `.sheet()` renders inset/all-4-corners-rounded at
+/// every detent, `.large` included). This view owns its own scrim and card
+/// now, Group-B-style. It's placed identically at both presentation sites:
+/// Site A (`MapScreen`, top-level, its own scrim sits over the map) and
+/// Site B (nested inside `HoodSheet`, its own scrim sits over the Hood
+/// card) — the same construction works unmodified at both depths, since
+/// depth only changes *what's visually underneath*, never this view's own
+/// shape or dismiss behavior.
 struct PlaceDetailModal: View {
     let place: Place
     /// scenic-walk (T-057): the corridor candidate search needs every
@@ -18,19 +29,46 @@ struct PlaceDetailModal: View {
     // scenic-walk (T-057, TRD §4.10): one app-lifetime instance, injected by
     // `MapScreen` — not created here (TRD §4.4, A2).
     @Environment(RoutePreviewModel.self) private var routePreviewModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @GestureState private var dragOffset: CGFloat = 0
+
+    /// Downward drag distance past which a release dismisses — same value
+    /// as `PlacesListOverlay`'s/`PassportSurface`'s identical gesture.
+    private static let dismissDragThreshold: CGFloat = 80
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            header
-            categoryRow
-            touristTrapSlot
-            Spacer(minLength: 0)
-            RouteControls(model: routePreviewModel)
-            routeButton
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    // `closePlace()`, not `closeHood()` — same reasoning as
+                    // `closeButton` below: a scrim tap should behave exactly
+                    // like the ✕, and dismiss-one-level is this view's own
+                    // contract regardless of how the scrim was reached.
+                    router.closePlace()
+                }
+
+            card
+                .offset(y: max(0, dragOffset))
+                .gesture(
+                    DragGesture()
+                        .updating($dragOffset) { value, state, _ in
+                            state = value.translation.height
+                        }
+                        .onEnded { value in
+                            if value.translation.height > Self.dismissDragThreshold {
+                                router.closePlace()
+                            }
+                        }
+                )
         }
-        .padding()
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
+        .ignoresSafeArea(edges: .bottom)
+        .transition(
+            reduceMotion
+                ? .opacity
+                : .move(edge: .bottom).combined(with: .opacity)
+        )
         .task(id: place.id) {
             await routePreviewModel.resolve(for: place, hoods: hoods, places: placeCatalog.allPlaces)
         }
@@ -42,6 +80,42 @@ struct PlaceDetailModal: View {
             // until the next resolve.
             routePreviewModel.reset()
         }
+    }
+
+    private var card: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            dragHandle
+            VStack(alignment: .leading, spacing: 20) {
+                header
+                categoryRow
+                touristTrapSlot
+                Spacer(minLength: 0)
+                RouteControls(model: routePreviewModel)
+                routeButton
+            }
+            .padding()
+        }
+        // Full width, flush to the bottom edge, top-corners-only — matches
+        // Group B's own shape exactly.
+        .background(
+            Color("Surface"),
+            in: UnevenRoundedRectangle(
+                topLeadingRadius: 20, bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0, topTrailingRadius: 20,
+                style: .continuous
+            )
+        )
+    }
+
+    private var dragHandle: some View {
+        Capsule()
+            .fill(.secondary)
+            .frame(width: 36, height: 5)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .accessibilityHidden(true)
     }
 
     private var header: some View {

@@ -4,6 +4,17 @@ import SwiftUI
 /// `PlaceCatalog`/`DetailRouter` from the environment — no fetch, no local
 /// copy of anything: `places(in:)`/`blurb(for:)` are dictionary reads against
 /// already-fetched data.
+///
+/// **No longer presented via `.sheet()` (T-079/`PAS-73` re-fix)** — see
+/// `EventDetailModal`'s doc comment for the full iOS 26 Liquid Glass
+/// rationale. This view now owns its own scrim and card (Group-B-style),
+/// and Site B's nested depth-2 `PlaceDetailModal` — previously a `.sheet`
+/// attached to this view — is now just embedded directly as a further
+/// `ZStack` layer above this view's own card: `PlaceDetailModal` supplies
+/// its *own* scrim and card (it's the same view used unmodified at Site A),
+/// so the visual result is two stacked scrim+card pairs, matching what two
+/// nested system sheets used to look like, just both now flush/full-width/
+/// top-corners-only instead of floating.
 struct HoodSheet: View {
     let hood: Hood
     /// scenic-walk (T-057): threaded through to Site B's nested
@@ -13,35 +24,46 @@ struct HoodSheet: View {
 
     @Environment(PlaceCatalog.self) private var placeCatalog
     @Environment(DetailRouter.self) private var router
-    // Not read by this view's own body — held only to re-apply to Site B's
-    // `.sheet` content below (see that modifier's comment for why).
+    // Re-applied to Site B's embedded `PlaceDetailModal` below — no longer
+    // strictly required now that it's plain view embedding rather than a
+    // `.sheet` boundary (environment propagates normally through the
+    // hierarchy), but left explicit rather than relying on that: cheap
+    // insurance against a repeat of the T-033/PAS-13 environment-propagation
+    // crash this file's history already paid for once.
     @Environment(SavedPlacesStore.self) private var savedPlacesStore
     @Environment(RoutePreviewModel.self) private var routePreviewModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @GestureState private var dragOffset: CGFloat = 0
+
+    /// Downward drag distance past which a release dismisses — same value
+    /// as `PlacesListOverlay`'s/`PassportSurface`'s identical gesture.
+    private static let dismissDragThreshold: CGFloat = 80
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                header
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { router.closeHood() }
 
-                flagLine
+            card
+                .offset(y: max(0, dragOffset))
+                .gesture(
+                    DragGesture()
+                        .updating($dragOffset) { value, state, _ in
+                            state = value.translation.height
+                        }
+                        .onEnded { value in
+                            if value.translation.height > Self.dismissDragThreshold {
+                                router.closeHood()
+                            }
+                        }
+                )
 
-                content
-            }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-        // Site B (TRD §4.2): no `.presentationBackgroundInteraction` here —
-        // deliberate. What's "behind" a depth-2 modal is this Hood sheet,
-        // not the map, and it is already fully covered either way.
-        //
-        // `.environment()` re-applied here, not just at Site A: `.sheet`
-        // content does not inherit `.environment(_:)` set on the *presenting*
-        // view's modifier chain — confirmed by root-causing T-033/PAS-13's
-        // crash (PROGRESS.md 2026-08-01). Each `.sheet` boundary needs its
-        // own explicit re-application of whatever its content reads.
-        .sheet(isPresented: router.isDepth2Presented) {
+            // Site B (TRD §4.2): layered directly above this view's own
+            // card, not a `.sheet` — see this type's doc comment.
+            // `PlaceDetailModal` supplies its own scrim/card/drag-dismiss,
+            // so no additional wrapping is needed here.
             if let place = router.place {
                 PlaceDetailModal(place: place, hoods: hoods)
                     .environment(router)
@@ -49,6 +71,55 @@ struct HoodSheet: View {
                     .environment(routePreviewModel)
             }
         }
+        .ignoresSafeArea(edges: .bottom)
+        .transition(
+            reduceMotion
+                ? .opacity
+                : .move(edge: .bottom).combined(with: .opacity)
+        )
+    }
+
+    private var card: some View {
+        VStack(spacing: 0) {
+            dragHandle
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    header
+
+                    flagLine
+
+                    content
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            // Capped like `PlacesListOverlay`'s own scrollable content (same
+            // 480pt ceiling, `PAS-48`) rather than left to grow with however
+            // many places a Hood has — this card is now intrinsically
+            // sized, not detent-driven, so an uncapped list would make
+            // short Hoods and long Hoods produce very differently sized
+            // cards.
+            .frame(maxHeight: 480)
+        }
+        .background(
+            Color("Surface"),
+            in: UnevenRoundedRectangle(
+                topLeadingRadius: 20, bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0, topTrailingRadius: 20,
+                style: .continuous
+            )
+        )
+    }
+
+    private var dragHandle: some View {
+        Capsule()
+            .fill(.secondary)
+            .frame(width: 36, height: 5)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .accessibilityHidden(true)
     }
 
     private var header: some View {

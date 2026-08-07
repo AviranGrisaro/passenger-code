@@ -73,12 +73,18 @@ final class DetailRouter {
         place == nil ? nil : (hood == nil ? 1 : 2)
     }
 
-    /// `.sheet(isPresented:)` at site A (TRD §4.2, extended by T-034 TRD
-    /// §4.7 for `event`). Writing `true` is ignored — a sheet here is only
-    /// ever opened by `openHood`/`openPlace`/`openEvent`, never by writing
-    /// the binding. Writing `false` is the swipe-to-dismiss path: routed
-    /// into `closeHood()`, which now also clears `event`, so a depth-1
-    /// dismiss cannot strand a place or leave a stale event behind.
+    /// Site A's presence flag (TRD §4.2, extended by T-034 TRD §4.7 for
+    /// `event`). Originally `.sheet(isPresented:)`'s own binding; Site A
+    /// moved off `.sheet()` to a custom overlay (T-079/`PAS-73` re-fix,
+    /// `product` REJECT 2026-08-07 — see `MapScreen.body`'s `.overlay`
+    /// comment), but this `Binding` stays: `MapScreen` still reads
+    /// `.wrappedValue` to gate the overlay and to drive a couple of other
+    /// state cleanups (`onChange`, `EdgeAvailability`). Writing `true` is
+    /// ignored — a presentation here is only ever opened by
+    /// `openHood`/`openPlace`/`openEvent`, never by writing the binding.
+    /// Writing `false` is the drag-to-dismiss path: routed into
+    /// `closeHood()`, which now also clears `event`, so a depth-1 dismiss
+    /// cannot strand a place or leave a stale event behind.
     var isDepth1Presented: Binding<Bool> {
         Binding(
             get: { self.hood != nil || self.place != nil || self.event != nil },
@@ -86,9 +92,14 @@ final class DetailRouter {
         )
     }
 
-    /// `.sheet(isPresented:)` at site B, inside `HoodSheet` (TRD §4.2).
-    /// Writing `false` routes to `closePlace()` only — leaves the Hood
-    /// sheet standing.
+    /// Site B's presence flag, inside `HoodSheet` (TRD §4.2). Originally
+    /// `.sheet(isPresented:)`'s own binding; Site B moved off `.sheet()`
+    /// the same pass as Site A (`HoodSheet` now embeds `PlaceDetailModal`
+    /// directly, calling `closePlace()` from its own scrim/drag gesture
+    /// rather than through this `Binding`) — kept as a small, still-useful
+    /// "is a place open under this Hood" query, covered by
+    /// `DetailRouterTests`. Writing `false` routes to `closePlace()` only —
+    /// leaves the Hood sheet standing.
     var isDepth2Presented: Binding<Bool> {
         Binding(
             get: { self.hood != nil && self.place != nil },

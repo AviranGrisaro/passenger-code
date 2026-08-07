@@ -49,6 +49,17 @@ struct PassportSurface: View {
                         }
                 )
         }
+        // `.ignoresSafeArea(edges: .bottom)` belongs on the outer `ZStack`,
+        // not nested on `card` (T-079/`PAS-73` re-fix, `product` REJECT
+        // 2026-08-07, same fix as `PlacesListOverlay`'s identical
+        // construction) — a child's `ignoresSafeArea()` only extends the
+        // render space of the frame it's directly attached to, and `card`
+        // here is an intrinsically-sized `VStack` aligned to the ZStack's
+        // bottom edge, not a frame that itself reaches the screen edge.
+        // Applied to the `ZStack` (the container `card` is aligned within),
+        // the whole layer's true bottom edge moves to the screen's actual
+        // last pixel row, and `card`'s `.bottom` alignment follows it there.
+        .ignoresSafeArea(edges: .bottom)
         // Reduce Motion collapses the transition to 0 duration rather than
         // skipping the state change — the view is still inserted/removed,
         // it just doesn't animate doing so (TRD §4.6).
@@ -73,6 +84,8 @@ struct PassportSurface: View {
         // this surface by z-order, not by this card stopping short of the
         // row. This surface still owns its own presentation (per the header
         // comment above) — matching shape only, not adopting the presenter.
+        // (`.ignoresSafeArea` itself lives on `body`'s outer `ZStack`, not
+        // here — see that modifier's comment for why.)
         .background(
             Color("Surface"),
             in: UnevenRoundedRectangle(
@@ -81,7 +94,6 @@ struct PassportSurface: View {
                 style: .continuous
             )
         )
-        .ignoresSafeArea(edges: .bottom)
     }
 
     private var dragHandle: some View {

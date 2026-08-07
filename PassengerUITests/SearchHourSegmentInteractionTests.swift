@@ -53,7 +53,10 @@ final class SearchHourSegmentInteractionTests: XCTestCase {
         let map = app.maps.firstMatch
         XCTAssertTrue(map.waitForExistence(timeout: 5), "Map never appeared")
 
-        let searchButton = app.buttons["Search"]
+        // "Search and hours" — `PAS-75` renamed `SearchButton`'s label off
+        // "Search" to stop colliding with `SearchOverlay`'s own "Search"
+        // segment (T-079 re-fix, 2026-08-07).
+        let searchButton = app.buttons["Search and hours"]
         XCTAssertTrue(searchButton.waitForExistence(timeout: 5), "SearchButton never appeared in MapNavRow")
         searchButton.tap()
 

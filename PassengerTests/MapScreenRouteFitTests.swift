@@ -18,9 +18,16 @@ struct MapScreenRouteFitTests {
         CLLocationCoordinate2D(latitude: 32.06, longitude: 34.79),
     ]
     /// A representative measured pair — roughly what `qa`'s iPhone 17
-    /// `.medium`-sheet measurement (y 415–866) implies, but arrived at here
-    /// as two heights fed through `visibleAboveSheetFraction`, not
-    /// hardcoded as a fraction (that's the exact defect A3 exists to fix).
+    /// sheet-height measurement implied at the time this was written, but
+    /// arrived at here as two heights fed through `visibleAboveSheetFraction`,
+    /// not hardcoded as a fraction (that's the exact defect A3 exists to
+    /// fix). The depth-1 sheet's detents changed to `.large`-only (T-079/
+    /// `PAS-73` re-fix, 2026-08-07 — a partial-height detent renders as an
+    /// inset floating card on iOS 26, not the flush/full-width shape this
+    /// app requires everywhere), so a live measurement today would report a
+    /// taller `presentedSheetHeight` than 437 — this pure-function test is
+    /// still a valid representative pair regardless, since A3's fraction
+    /// math doesn't care which detent produced the height.
     private static let measuredFraction = MapScreen.visibleAboveSheetFraction(
         mapViewportHeight: 852, presentedSheetHeight: 437
     )

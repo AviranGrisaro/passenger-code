@@ -15,25 +15,96 @@ import SwiftUI
 /// everything else here. `nil` means the slug didn't resolve against the
 /// loaded Hood list — the row is omitted rather than falling back to the raw
 /// id, since showing the raw id is exactly what req 4 forbids.
+///
+/// **No longer presented via `.sheet()` (T-079/`PAS-73` re-fix, `product`
+/// REJECT 2026-08-07).** The spec's original premise — a system `.sheet()`
+/// is full-width/flush-bottom/top-corners-only by default — is false on iOS
+/// 26: a `.sheet()` renders as a floating card rounded on all 4 corners at
+/// *every* detent, including `.large` (measured directly on iPhone 17/iOS
+/// 26.5 — a first attempt at this fix tried `.presentationDetents([.large])`
+/// alone and it did **not** produce the required shape, confirmed by
+/// screenshot, not assumed). No SwiftUI API on this toolchain forces the
+/// old page-style full-bleed sheet shape back. So this view now owns its
+/// own presentation, the same `ZStack`-scrim-plus-flush-card construction
+/// `PlacesListOverlay`/`PassportSurface` already use (Group B) — `MapScreen`
+/// places it in a plain `.overlay`, not a `.sheet`, see that file's comment.
 struct EventDetailModal: View {
     let event: LiveEvent
     let hoodName: String?
 
     @Environment(DetailRouter.self) private var router
     @Environment(\.directionsService) private var directionsService
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @GestureState private var dragOffset: CGFloat = 0
+
+    /// Downward drag distance past which a release dismisses — same value
+    /// as `PlacesListOverlay`'s/`PassportSurface`'s identical gesture.
+    private static let dismissDragThreshold: CGFloat = 80
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            header
-            ForEach(EventDetailRows.rows(for: event), id: \.self) { row in
-                rowView(for: row)
-            }
-            Spacer(minLength: 0)
-            routeButton
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { router.closeEvent() }
+
+            card
+                .offset(y: max(0, dragOffset))
+                .gesture(
+                    DragGesture()
+                        .updating($dragOffset) { value, state, _ in
+                            state = value.translation.height
+                        }
+                        .onEnded { value in
+                            if value.translation.height > Self.dismissDragThreshold {
+                                router.closeEvent()
+                            }
+                        }
+                )
         }
-        .padding()
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
+        .ignoresSafeArea(edges: .bottom)
+        .transition(
+            reduceMotion
+                ? .opacity
+                : .move(edge: .bottom).combined(with: .opacity)
+        )
+    }
+
+    private var card: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            dragHandle
+            VStack(alignment: .leading, spacing: 20) {
+                header
+                ForEach(EventDetailRows.rows(for: event), id: \.self) { row in
+                    rowView(for: row)
+                }
+                Spacer(minLength: 0)
+                routeButton
+            }
+            .padding()
+        }
+        // Full width, flush to the bottom edge, top-corners-only — matches
+        // Group B's own shape exactly (see that construction's comment for
+        // the modifier-order reasoning this one follows).
+        .background(
+            Color("Surface"),
+            in: UnevenRoundedRectangle(
+                topLeadingRadius: 20, bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0, topTrailingRadius: 20,
+                style: .continuous
+            )
+        )
+    }
+
+    private var dragHandle: some View {
+        Capsule()
+            .fill(.secondary)
+            .frame(width: 36, height: 5)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .accessibilityHidden(true)
     }
 
     private var header: some View {
