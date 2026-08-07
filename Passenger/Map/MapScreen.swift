@@ -1068,9 +1068,38 @@ struct MapScreen: View {
         let tapPoint = MKMapPoint(coordinate)
         let tolerance = mapPointTolerance(forScreenPoints: 22, at: screenPoint, proxy: proxy) ?? 0
 
+        // PAS-79 fix: `EventLayer`'s round-3 redesign (T-062/PAS-58) draws
+        // each marker's whole 44×44 hosting/hit-test box `markerVerticalNudge`
+        // (18pt) *below* `event.coordinate` via `Annotation`'s `anchor:` —
+        // deliberately, so the visible glyph and the Button's own tap target
+        // never separate (see that property's doc comment). But `tapPoint`
+        // above is built from the raw screen point the user actually touched
+        // — which, for a tap on the visible (nudged-down) glyph, converts to
+        // a map coordinate ~18pt-worth *south* of `event.coordinate` itself.
+        // Comparing that against the unadjusted `tolerance` (22 screen
+        // points) left only ~4pt of real margin instead of the intended 22,
+        // and on a near-miss this branch falls through to the `place`
+        // branch below — whose own `PlaceHitTester` has no such offset and
+        // often *does* hit, since events commonly sit at a real venue's own
+        // place pin. The two branches racing the marker's own `Button`
+        // action (which fires unconditionally, offset or not) is exactly
+        // how a tap could "succeed" (the button's `openEvent` lands) and
+        // then get silently overwritten by this gesture's own `openPlace`/
+        // `openHood` resolving to something else for the same physical
+        // touch — `DetailRouter`'s destinations are mutually exclusive, so
+        // whichever call lands last wins. Widening the event tolerance by
+        // the nudge's own screen-point distance (same conversion
+        // `tolerance` above already uses) restores the full intended margin
+        // and keeps this branch's hit test agreeing with what's actually
+        // drawn on screen.
+        let markerNudgeTolerance = mapPointTolerance(
+            forScreenPoints: EventLayer.markerVerticalNudge, at: screenPoint, proxy: proxy
+        ) ?? 0
+        let eventTolerance = tolerance + markerNudgeTolerance
+
         let eventHitTester = EventHitTester(events: eventStore.isLayerVisible ? visibleEvents : [])
         let placeHitTester = PlaceHitTester(places: placeCatalog.allPlaces)
-        if let event = eventHitTester.event(at: tapPoint, tolerance: tolerance) {
+        if let event = eventHitTester.event(at: tapPoint, tolerance: eventTolerance) {
             detailRouter.openEvent(event)
         } else if showsNames, let place = placeHitTester.place(at: tapPoint, tolerance: tolerance) {
             detailRouter.openPlace(place)

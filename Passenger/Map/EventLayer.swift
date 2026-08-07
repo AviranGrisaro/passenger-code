@@ -53,11 +53,14 @@ struct EventLayer: MapContent {
     /// (`0.5 − nudge/boxHeight`) puts the coordinate near the box's top
     /// edge, which pushes the box — and everything in it — down by `nudge`
     /// on screen.
-    private let markerVerticalNudge: CGFloat = 18
+    /// **Not private** (PAS-79 fix, 2026-08-07): `MapScreen.handleTap`'s
+    /// `SpatialTapGesture` fallback needs this exact value too — see its own
+    /// use site for why.
+    static let markerVerticalNudge: CGFloat = 18
     private let markerBoxHeight: CGFloat = 44
 
     private var markerAnchor: UnitPoint {
-        UnitPoint(x: 0.5, y: 0.5 - markerVerticalNudge / markerBoxHeight)
+        UnitPoint(x: 0.5, y: 0.5 - Self.markerVerticalNudge / markerBoxHeight)
     }
 
     var body: some MapContent {
