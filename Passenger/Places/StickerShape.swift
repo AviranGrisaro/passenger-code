@@ -25,7 +25,10 @@ enum StickerShape: String, Sendable, CaseIterable {
     case glass
     /// market — a shopping basket.
     case basket
-    /// museum — a columned building front.
+    /// museum — comedy/tragedy masks, the exhibits glyph Aviran picked to
+    /// replace the columned-building front (`building.columns.fill` read as
+    /// "bank" or "courthouse" in `qa`'s blind read, passport TRD §9 row
+    /// 3(g), `passport.md` req 3's tightened pass condition).
     case columns
     /// landmark — binoculars, the sightseeing glyph.
     case binoculars
@@ -42,7 +45,7 @@ enum StickerShape: String, Sendable, CaseIterable {
         case .cutlery: "fork.knife"
         case .glass: "wineglass.fill"
         case .basket: "basket.fill"
-        case .columns: "building.columns.fill"
+        case .columns: "theatermasks.fill"
         case .binoculars: "binoculars.fill"
         case .generic: "seal.fill"
         }
@@ -64,7 +67,7 @@ enum StickerShape: String, Sendable, CaseIterable {
         case .cutlery: "cutlery"
         case .glass: "glass"
         case .basket: "basket"
-        case .columns: "columns"
+        case .columns: "masks"
         case .binoculars: "binoculars"
         case .generic: "marker"
         }
