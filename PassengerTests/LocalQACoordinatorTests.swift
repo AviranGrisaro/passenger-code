@@ -134,7 +134,22 @@ struct LocalQACoordinatorTests {
 
         let task = Task { await coordinator.start() }
         source.continuation.yield(event)
-        try? await Task.sleep(for: .milliseconds(50))
+        // Best-effort only, disclosed rather than implied deterministic: the
+        // gate's `.suppress` branch (TRD §11 C11) never mutates `toastState`,
+        // so — exactly as with the drop above — there is no observable state
+        // change to poll `waitForToastState` on; a predicate for "still nil"
+        // is already true before the coordinator's `for await` loop has run
+        // at all, so waiting on it would prove nothing. What the assertion
+        // rests on instead is that `toastState` starts `nil` and the suppress
+        // path leaves it `nil` regardless of when the loop gets its turn, so
+        // the expectation below is correct and stable either way. These
+        // yields exist only to give the suppress code path a real chance to
+        // execute for coverage, not for correctness — unlike a fixed sleep,
+        // they cost real scheduler turns rather than wall-clock time, so they
+        // don't reintroduce a load-sensitive window.
+        for _ in 0..<10 {
+            await Task.yield()
+        }
 
         #expect(coordinator.toastState == nil)
         task.cancel()
@@ -147,7 +162,10 @@ struct LocalQACoordinatorTests {
 
         let task = Task { await coordinator.start() }
         source.continuation.yield(event)
-        try? await Task.sleep(for: .milliseconds(50))
+        // Deterministic: `answer(_:)` is a no-op unless `toastState` is
+        // already `.asking`, so wait for that real state rather than guessing
+        // how long the coordinator's loop needs (PAS-62).
+        await Self.waitForToastState(on: coordinator) { $0 == .asking(event) }
 
         coordinator.answer(true)
         #expect(coordinator.toastState == .confirming(text: SyncState.disabled.confirmationCopy))
