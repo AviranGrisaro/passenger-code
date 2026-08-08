@@ -15,15 +15,17 @@ import SwiftUI
 /// this file and `PassengerUITests`, same idiom as `MapScreen`'s existing
 /// `-uiTestZoomedIn`/`-uiTestExposeCameraRegion` seams.
 ///
-/// **[ASSUMPTION], load-bearing and confirmed at C16 (T-077/`PAS-51`, v6):**
-/// that `.environment(\.dynamicTypeSize, …)` applied here propagates into
-/// `SearchOverlay`'s Hour segment (`HeatModalCard`'s successor,
-/// T-078/`PAS-60`) and is then clamped by its own
-/// `.dynamicTypeSize(...maxDynamicTypeSize)`, scoped to `hourContent` —
-/// standard SwiftUI environment behaviour, observed live by
-/// `SearchHourSegmentInteractionTests`'s rendered AX3/AX5 suite. If a future
-/// UI test finds it no longer takes effect, that is a **BLOCKED**
-/// disclosure on TRD §9 row 5b, not grounds to fall back to a source grep.
+/// **Status as of T-081/`PAS-76` (2026-08-08): unverified, not confirmed.**
+/// This seam previously propagated `.environment(\.dynamicTypeSize, …)` into
+/// `SearchOverlay`'s Hour segment, clamped by its own
+/// `.dynamicTypeSize(...maxDynamicTypeSize)`. That Hour segment (and its
+/// sole test consumer, `SearchHourSegmentInteractionTests`'s rendered AX3/AX5
+/// suite) was deleted by T-081/`PAS-76`. **No test currently passes
+/// `-uiTestDynamicTypeSize` at all**, so this override seam has zero live
+/// consumers — it is still applied at `MapScreen.swift:699` and remains a
+/// no-op on a normal launch, same as always, but nothing exercises the
+/// non-default path. A future UI test that needs it should verify the
+/// propagation fresh rather than rely on this comment's history.
 enum UITestOverrides {
     /// `-uiTestDynamicTypeSize <size>` — one of `DynamicTypeSize`'s own case
     /// names (`xSmall`, `small`, `medium`, `large`, `xLarge`, `xxLarge`,
