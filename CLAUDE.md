@@ -44,6 +44,12 @@ When something's broken and you're not implementing a spec, work in this order �
 3. **Form a hypothesis** for *why* it fails before touching code.
 4. **Add the minimal logging/assertion needed to confirm it, then remove it** once the fix lands — no debug scaffolding in the diff.
 
+## Machine & shell facts (paid for once — don't re-derive them)
+
+**A check tool that fails quietly reads as a real result, and this machine has four ways to do that (L-058, 2026-08-08).** Every one of them returned a clean-looking answer that was wrong, and each cost a real diagnosis: `pgrep -c xcodebuild` / `pgrep -c 'Simulator|CoreSimulator'` matched on short name only and reported **zero** while `xcodebuild` and a full simulator runtime were live, which turned a load-270 HALT into a "load has drained, resume" call (2026-08-07); `timeout` **does not exist here** — no coreutils, `(eval):1: command not found: timeout` — so a command you thought you bounded runs unbounded; a **zsh glob that matches nothing aborts the whole command**, so `ls *.xcodeproj *.xcworkspace` silently produced nothing when only the second glob missed; and L-048's Linear case was the same shape one layer up. **So: when a check returns "nothing", prove the tool works before believing it** — a positive control, or a second tool that reads the same fact a different way. Use `pgrep -f` (full path) or `ps -Ao pcpu,rss,comm -r | head`, never bare `pgrep -c <name>`; use `setopt null_glob` or one glob per command; don't reach for `timeout`.
+
+**Load is not the resource that runs out first — swap is.** The 2026-08-07 23:28 HALT read `uptime` 270 with ~108MB free RAM; the real bottleneck was `vm.swapusage` at **7869M of 8192M used (96%)**, driven by a booted iOS 26.5 runtime's `mediaanalysisd` daemon pinned at **286% CPU** — a known simulator pathology that does not self-resolve by waiting, so something has to shut the runtime down. Read `vm.swapusage` beside `uptime` and `df -h /`, and treat a load reading taken once as a trough, not a trend: re-check before calling a HALT drained.
+
 ## Simulator facts (paid for once — don't re-derive them)
 
 Hard-won facts about *this machine and toolchain*, not about any one role. **Add new ones here, not to your own agent file** — a fact filed in the file of whoever discovered it is a fact the next role pays for again (L-046, 2026-08-05: `designer.md` carried a partial version of the first item below while `qa`, which runs the most simulator passes, had none and lost four rounds of T-038/`PAS-29` to it).
