@@ -88,4 +88,26 @@ struct HoodCatalogTests {
         // In-memory form is open per hood-dataset TRD §4.2.
         #expect(kerem.ring.count == 4)
     }
+
+    // MARK: - hood-dataset TRD §3.1 D11: `aliases` (bundle schemaVersion 3)
+
+    @Test("a Hood with a bundled alias decodes it into Hood.aliases")
+    func decodesHoodAlias() throws {
+        let hoods = try HoodCatalog.load(resourceName: "hoods-with-aliases-fixture", bundle: Self.testBundle)
+        let neveEliezer = try #require(hoods.first { $0.id == "neve-eliezer" })
+        #expect(neveEliezer.aliases == ["Kfar Shalem"])
+    }
+
+    @Test("a Hood with an explicit empty aliases array decodes to []")
+    func decodesEmptyAliasesArray() throws {
+        let hoods = try HoodCatalog.load(resourceName: "hoods-with-aliases-fixture", bundle: Self.testBundle)
+        let kerem = try #require(hoods.first { $0.id == "kerem-hateimanim" })
+        #expect(kerem.aliases == [])
+    }
+
+    @Test("a pre-schemaVersion-3 bundle with no aliases key at all still decodes, defaulting to []")
+    func absentAliasesKeyDefaultsToEmptyArray() throws {
+        let hoods = try HoodCatalog.load(resourceName: "hoods-schema-v2-fixture", bundle: Self.testBundle)
+        #expect(hoods.allSatisfy { $0.aliases == [] })
+    }
 }

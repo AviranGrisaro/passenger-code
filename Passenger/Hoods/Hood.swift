@@ -32,6 +32,16 @@ struct Hood: Identifiable, Sendable {
     let isTouristTrap: Bool?
     /// No `nil` state: an undesignated Hood carries `false` explicitly (§3.1).
     let designatedForProgression: Bool
+    /// Alternate/old neighborhood names that should resolve to this Hood in
+    /// search (hood-dataset TRD §3.1 D11, bundle schemaVersion 3). Empty, not
+    /// `nil` — a Hood with no aliases carries `[]`, same "no placeholder"
+    /// shape as the rest of this type. `var`, not `let`: a `let` with a
+    /// default expression is excluded from the synthesized memberwise init
+    /// entirely rather than becoming a defaulted parameter, which would
+    /// break every existing test/preview `Hood(...)` call site that doesn't
+    /// name this parameter. Never mutated after construction in practice —
+    /// `Hood` still behaves as an immutable value type.
+    var aliases: [String] = []
 
     /// For `MapPolygon(coordinates:)` — `Map/` is the only layer that touches
     /// raw coordinates for rendering; `Hoods/`'s own hit-testing stays in the

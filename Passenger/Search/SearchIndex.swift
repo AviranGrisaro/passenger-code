@@ -26,6 +26,10 @@ struct SearchIndex: Sendable {
     struct HoodEntry: Sendable {
         let hood: Hood
         let foldedName: String
+        /// Parallel to `hood.aliases` — folded alternate/old neighborhood
+        /// names (hood-dataset TRD §3.1 D11) so a search for e.g. "Kfar
+        /// Shalem" surfaces the Hood shipped as "Neve Eliezer" (§4.2).
+        let foldedAliases: [String]
     }
 
     let places: [PlaceEntry]
@@ -44,7 +48,7 @@ struct SearchIndex: Sendable {
             )
         }
         let hoodEntries = hoods.map { hood in
-            HoodEntry(hood: hood, foldedName: fold(hood.name))
+            HoodEntry(hood: hood, foldedName: fold(hood.name), foldedAliases: hood.aliases.map(fold))
         }
         return SearchIndex(places: placeEntries, hoods: hoodEntries)
     }

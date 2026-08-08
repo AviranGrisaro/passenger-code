@@ -33,6 +33,10 @@ enum HoodCatalog {
             /// (hood-dataset TRD §4.3), matching `hoods.designated_for_progression`'s
             /// own `not null default false`.
             let designatedForProgression: Bool?
+            /// Absent in a pre-schemaVersion-3 bundle — defaults to `[]`
+            /// (hood-dataset TRD §3.1 D11), matching `hoods.aliases`'s own
+            /// `not null default '{}'`.
+            let aliases: [String]?
         }
         let schemaVersion: Int
         let generatedAt: String
@@ -114,7 +118,8 @@ enum HoodCatalog {
                 centroid: resolvedCentroid,
                 blurb: normalizedBlurb(entry.blurb),
                 isTouristTrap: entry.isTouristTrap,
-                designatedForProgression: entry.designatedForProgression ?? false
+                designatedForProgression: entry.designatedForProgression ?? false,
+                aliases: entry.aliases ?? []
             )
         }
     }

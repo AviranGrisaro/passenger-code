@@ -14,13 +14,14 @@ struct SearchIndexTests {
         )
     }
 
-    private static func hood(id: String, name: String) -> Hood {
+    private static func hood(id: String, name: String, aliases: [String] = []) -> Hood {
         let ring = [MKMapPoint(x: 0, y: 0), MKMapPoint(x: 10, y: 0), MKMapPoint(x: 10, y: 10)]
         return Hood(
             id: id, name: name, ring: ring,
             boundingRect: MKMapRect(x: 0, y: 0, width: 10, height: 10),
             centroid: MKMapPoint(x: 5, y: 5).coordinate,
-            blurb: nil, isTouristTrap: nil, designatedForProgression: false
+            blurb: nil, isTouristTrap: nil, designatedForProgression: false,
+            aliases: aliases
         )
     }
 
@@ -57,5 +58,21 @@ struct SearchIndexTests {
     func emptyIndexIsEmpty() {
         #expect(SearchIndex.empty.places.isEmpty)
         #expect(SearchIndex.empty.hoods.isEmpty)
+    }
+
+    @Test("build folds each Hood's aliases alongside its name, in the same order")
+    func buildFoldsHoodAliases() {
+        let neveEliezer = Self.hood(id: "neve-eliezer", name: "Neve Eliezer", aliases: ["Kfar Shalem"])
+        let index = SearchIndex.build(places: [], hoods: [neveEliezer])
+
+        #expect(index.hoods[0].foldedAliases == ["Kfar Shalem"].map(SearchIndex.fold))
+    }
+
+    @Test("a Hood with no aliases gets an empty foldedAliases array, not a crash")
+    func buildHandlesNoAliases() {
+        let florentin = Self.hood(id: "florentin", name: "Florentin")
+        let index = SearchIndex.build(places: [], hoods: [florentin])
+
+        #expect(index.hoods[0].foldedAliases.isEmpty)
     }
 }

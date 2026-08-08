@@ -17,13 +17,14 @@ struct SearchQueryTests {
         )
     }
 
-    private static func hood(id: String, name: String) -> Hood {
+    private static func hood(id: String, name: String, aliases: [String] = []) -> Hood {
         let ring = [MKMapPoint(x: 0, y: 0), MKMapPoint(x: 10, y: 0), MKMapPoint(x: 10, y: 10)]
         return Hood(
             id: id, name: name, ring: ring,
             boundingRect: MKMapRect(x: 0, y: 0, width: 10, height: 10),
             centroid: MKMapPoint(x: 5, y: 5).coordinate,
-            blurb: nil, isTouristTrap: nil, designatedForProgression: false
+            blurb: nil, isTouristTrap: nil, designatedForProgression: false,
+            aliases: aliases
         )
     }
 
@@ -103,6 +104,28 @@ struct SearchQueryTests {
         let results = SearchQuery.run("florentin", filter: .all, in: index)
         // D7 order: Hood matches first, then place name matches.
         #expect(results.map(\.displayName) == ["Florentin", "Florentin Street Art Walk"])
+    }
+
+    // MARK: - hood-dataset TRD §3.1 D11: alias search (Kfar Shalem -> Neve Eliezer, etc.)
+
+    @Test("a query matching a Hood's alias surfaces that Hood, not a separate result")
+    func aliasMatchSurfacesTheOwningHood() {
+        let index = SearchIndex.build(
+            places: [],
+            hoods: [Self.hood(id: "neve-eliezer", name: "Neve Eliezer", aliases: ["Kfar Shalem"])]
+        )
+        let results = SearchQuery.run("kfar shalem", filter: .all, in: index)
+        #expect(results.count == 1)
+        #expect(results.map(\.displayName) == ["Neve Eliezer"])
+    }
+
+    @Test("alias matching is case- and diacritic-insensitive, same as name matching")
+    func aliasMatchIsFolded() {
+        let index = SearchIndex.build(
+            places: [],
+            hoods: [Self.hood(id: "ramat-aviv", name: "Ramat Aviv", aliases: ["Ramat Aviv Aleph"])]
+        )
+        #expect(SearchQuery.run("RAMAT AVIV ALEPH", filter: .all, in: index).map(\.displayName) == ["Ramat Aviv"])
     }
 
     // MARK: - Rule 6: ordering — Hoods, then place-name matches, then keyword-only matches

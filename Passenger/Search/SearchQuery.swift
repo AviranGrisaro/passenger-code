@@ -35,7 +35,12 @@ enum SearchQuery {
             }
         }
 
-        let hoodMatches = index.hoods.filter { $0.foldedName.contains(q) }
+        // A Hood matches on its own name or on any of its aliases (T-active
+        // follow-up to hood-dataset TRD §3.1 D11) — an alias hit surfaces the
+        // same Hood, not a separate result.
+        let hoodMatches = index.hoods.filter { entry in
+            entry.foldedName.contains(q) || entry.foldedAliases.contains { $0.contains(q) }
+        }
 
         var nameMatches: [SearchIndex.PlaceEntry] = []
         var keywordMatches: [(entry: SearchIndex.PlaceEntry, keyword: String)] = []

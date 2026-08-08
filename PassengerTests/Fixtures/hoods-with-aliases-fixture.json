@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 3,
+  "generatedAt": "2026-08-07T00:00:00Z",
+  "city": "tel-aviv",
+  "hoods": [
+    {
+      "id": "neve-eliezer",
+      "name": "Neve Eliezer",
+      "polygon": [
+        [34.760, 32.050],
+        [34.770, 32.050],
+        [34.770, 32.058],
+        [34.760, 32.058]
+      ],
+      "blurb": null,
+      "aliases": ["Kfar Shalem"]
+    },
+    {
+      "id": "kerem-hateimanim",
+      "name": "Kerem HaTeimanim",
+      "polygon": [
+        [34.774, 32.050],
+        [34.784, 32.050],
+        [34.784, 32.058],
+        [34.774, 32.058]
+      ],
+      "blurb": null,
+      "aliases": []
+    }
+  ]
+}
