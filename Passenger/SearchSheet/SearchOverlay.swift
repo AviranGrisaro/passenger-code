@@ -7,81 +7,31 @@ import SwiftUI
 /// tap-catcher for this surface (D3) — this view draws only the surface
 /// itself.
 ///
-/// **T-078/`PAS-60` reopened (`nav-row-v2-redesign.md` §1):** this view now
-/// also owns the "Hour" segment — the map-hour slider that used to be its
-/// own standalone `HeatModalCard`/`HeatButton` surface. A top segmented
-/// control (`Search`/`Hour`, defaulting to `Search`) swaps the whole content
-/// area between the two; `chrome.presented == .search` covers both, since
-/// there is no longer an independent `.heat` chrome state. `HourReadout`/
-/// `HourSlider` are reused as private subviews of the Hour segment, not
-/// duplicated — `MapScreen` still owns the one `selectedHour` binding and
-/// the one `HourFormat.Readout`, threaded through exactly as it used to feed
-/// `HeatModalCard`.
-///
 /// `SearchSheet/` knows no map and no router (TRD §2.2) — it renders
 /// `[SearchResult]` and reports a selection or a dismissal upward by
 /// closure. `MapScreen` is the only caller and the only place that knows
 /// what `onSelect`/`onDismiss` do to `DetailRouter`/`MapChromeState`/
 /// `SearchSession`.
+///
+/// **T-081/`PAS-76`:** the "Hour" segment this view used to carry
+/// (T-078/`PAS-60`'s Search/Hour segmented control, wrapping `HourReadout`/
+/// `HourSlider`) is removed — `EdgeHourZone`/`EdgeHourTrack` ("the sides")
+/// already write the same `selectedHour` binding `MapScreen` owns, so the
+/// in-modal control was redundant. This view now only ever renders Search
+/// content; there is no more segmented control to switch away from.
 struct SearchOverlay: View {
     @Bindable var session: SearchSession
     let results: [SearchResult]
-    @Binding var selectedHour: Int
-    let hourReadout: HourFormat.Readout
     let onSelect: (SearchResult) -> Void
     let onDismiss: () -> Void
 
-    /// The two segments this surface now covers (§1 above). `.search` is
-    /// the default — search is the higher-frequency action, per the design
-    /// spec's Hick's-Law reasoning; Hour stays one tap away, never hidden.
-    private enum Segment: Hashable {
-        case search, hour
-    }
-
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isExpanded = false
-    @State private var segment: Segment = .search
-
-    /// Same ceiling `HeatModalCard` used to apply to its own content (F2,
-    /// `PAS-51` finding 2) — `HourReadout`'s offset numeral and "next day"
-    /// pill still need a cap to avoid mid-token wrap at AX5, and this
-    /// surface's height is now a fixed screen fraction rather than
-    /// content-sized, so an uncapped Hour segment could clip inside it.
-    /// Scoped to the Hour segment's own content, not the whole overlay —
-    /// Search's result rows scroll and have no such ceiling today.
-    private static let maxDynamicTypeSize: DynamicTypeSize = .accessibility3
 
     /// Two heights, not system detents (D2) — this is an overlay, not a
     /// `.sheet`, per D1. `compact` is the fresh-open height.
     private static let compactFraction: CGFloat = 0.45
     private static let expandedFraction: CGFloat = 0.92
-    /// **T-077/`PAS-51` fix (TRD §9 row 5b(i)/(ii), §10):** the Hour
-    /// segment's compact height, taller than `compactFraction`. `MapNavRow`
-    /// floats over this card's true-bottom-flush region at a *fixed*
-    /// distance from the screen's bottom edge (T-079/`PAS-73`'s
-    /// `.ignoresSafeArea(edges: .bottom)` plus `MapScreen`'s
-    /// `.padding(.bottom, 32)` on `MapNavRow`, both constants, neither
-    /// scaling with Dynamic Type) — call that reserved band `R`. Because
-    /// `hourContent`'s header/readout/slider lay out top-down from the
-    /// card's own top edge, the only way to keep `HourSlider` clear of `R`
-    /// at `.accessibility3` is to give the card enough extra height that
-    /// its top edge — and everything measured from it — sits above `R`
-    /// with room to spare. **A bottom-side fix (padding, a smaller
-    /// `ScrollView` viewport, `.clipped()`) cannot do this on its own**:
-    /// content that fits without scrolling renders at a fixed distance
-    /// from the *top*, so shrinking or padding the space *below* it changes
-    /// nothing about where it lands — confirmed empirically, not assumed
-    /// (a first attempt padded the `ScrollView` instead of growing the
-    /// card, rebuilt and reran the UI test, and the reported `hourSlider`
-    /// frame was pixel-identical to the unpadded version). `0.55` was
-    /// picked with a wide empirical margin over the ~0.50 the AX3 overlap
-    /// actually needed, verified by rerunning
-    /// `testHourSegmentContentStaysUnoccludedAndContainedAcrossTextSizes`.
-    /// Scoped to `.hour` only — `.search`'s bottom-edge problem (`PAS-78`)
-    /// turned out to have a different actual cause than this one, fixed at
-    /// its own source (`body`'s `.ignoresSafeArea` call below) rather than
-    /// with a matching fraction constant here.
-    private static let hourCompactFraction: CGFloat = 0.55
     /// Handle-drag distance past which the surface toggles height or
     /// dismisses (D2) — a Fitts's-Law-scale gesture threshold, not a literal
     /// system detent.
@@ -90,23 +40,16 @@ struct SearchOverlay: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let compactFraction = segment == .hour ? Self.hourCompactFraction : Self.compactFraction
-            let height = geometry.size.height * (isExpanded ? Self.expandedFraction : compactFraction)
+            let height = geometry.size.height * (isExpanded ? Self.expandedFraction : Self.compactFraction)
             VStack(alignment: .leading, spacing: 0) {
                 dragHandle
-                segmentPicker
-                switch segment {
-                case .search:
-                    header
-                    CategoryChipRow(filter: session.filter) { category in
-                        session.filter = session.filter.toggling(category)
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 4)
-                    resultsArea
-                case .hour:
-                    hourContent
+                header
+                CategoryChipRow(filter: session.filter) { category in
+                    session.filter = session.filter.toggling(category)
                 }
+                .padding(.horizontal)
+                .padding(.top, 4)
+                resultsArea
             }
             .frame(width: geometry.size.width, height: height, alignment: .top)
             // Full width, top-corners-only (T-079/`PAS-73`,
@@ -153,24 +96,25 @@ struct SearchOverlay: View {
             // keeps this card flush against the true bottom edge exactly as
             // before *only* for the home-indicator/container safe area
             // (T-079's original fix, still intact — confirmed no
-            // regression by rerunning `testHourSegmentContentStaysUnoccludedAndContainedAcrossTextSizes`
-            // and the T-079 shrink-to-fit tests), while now respecting the
+            // regression against the T-079 shrink-to-fit tests; the Hour
+            // segment's own rendered regression suite that used to be
+            // rerun here, `testHourSegmentContentStaysUnoccludedAndContainedAcrossTextSizes`,
+            // no longer exists as of T-081/`PAS-76`), while now respecting the
             // keyboard's own safe-area inset — so the card's rendered
             // frame shrinks above the keyboard while it's showing, and
             // `resultsArea`'s rows never end up rendered underneath it.
             .ignoresSafeArea(.container, edges: .bottom)
-            // C16 (TRD §9 row 5b, T-077/`PAS-51`) — the one identifier the
-            // T-078 merge dropped. Lets a UI test grab this fixed-fraction
-            // card's own frame for the containment checks row 5b(ii) needs;
-            // never used for a card-frame equality or separation assertion
-            // (§9 standing rule, new at v6) since this frame is identical at
-            // every text size by construction. `.accessibilityElement(children:
-            // .contain)` mirrors `MapNavRow`'s own identical need (`MapNavRow
-            // .swift`) — an identifier alone doesn't surface a plain SwiftUI
-            // container as a queryable element; `.contain` does, without
-            // hiding the segment picker/search field/slider children beneath it.
+            // Queryable container frame (was `hourSegmentCard`, C16, T-077/
+            // `PAS-51`) — renamed at T-081/`PAS-76` since the Hour segment
+            // it was named for no longer exists; this view only ever
+            // renders Search content now, and the identifier follows.
+            // `.accessibilityElement(children: .contain)` mirrors
+            // `MapNavRow.swift`'s own identical need — an identifier alone
+            // doesn't surface a plain SwiftUI container as a queryable
+            // element; `.contain` does, without hiding the search field/
+            // chip row/result rows beneath it.
             .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("hourSegmentCard")
+            .accessibilityIdentifier("searchOverlayCard")
         }
         .transition(
             reduceMotion
@@ -190,20 +134,6 @@ struct SearchOverlay: View {
             .contentShape(Rectangle())
             .gesture(DragGesture().onEnded(handleDragEnd))
             .accessibilityHidden(true)
-    }
-
-    /// Search/Hour, defaulting to `.search` (nav-row-v2-redesign.md §1) —
-    /// the single visible entry point that replaced the standalone Heat
-    /// button. A visible control, not a hidden gesture, per that spec's
-    /// Poka-Yoke reasoning.
-    private var segmentPicker: some View {
-        Picker("", selection: $segment) {
-            Text("Search").tag(Segment.search)
-            Text("Hour").tag(Segment.hour)
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal)
-        .padding(.top, 4)
     }
 
     private var header: some View {
@@ -247,58 +177,6 @@ struct SearchOverlay: View {
                 }
             }
         }
-    }
-
-    /// The Hour segment (T-078) — `HeatModalCard`'s former `header`/
-    /// `content`, reused as-is: same title, same close button, same
-    /// `HourReadout`/`HourSlider` pairing.
-    ///
-    /// **T-077/`PAS-51` fix (TRD §9 row 5b(ii)/(iii), §10 "the fixed-height
-    /// card clips its own content instead of growing"):** two distinct
-    /// failures, two distinct fixes.
-    ///
-    /// **Containment** (`HourSlider` pushed past the card's own bottom
-    /// edge, which is also the screen's bottom edge): the readout/slider
-    /// pairing used to sit in a plain top-aligned `VStack`, which has no
-    /// notion of the card's fixed height and simply grows past it at large
-    /// text sizes. Wrapping it in a `ScrollView` does what `resultsArea`
-    /// does one case over — it accepts whatever height the parent `VStack`
-    /// actually gives it (see `hourCompactFraction`'s doc comment) and
-    /// clips/scrolls its own content instead of overflowing it.
-    /// `.clipped()` alone was rejected because it would silently crop the
-    /// slider rather than keep it reachable by scrolling.
-    ///
-    /// **Occlusion** (`HourSlider` landing inside `MapNavRow`'s fixed
-    /// bottom band even while still on-screen) is a *different* bug the
-    /// `ScrollView` alone does not fix: content that fits without
-    /// scrolling still renders at a position fixed by what's *above* it
-    /// (the header, `HourReadout`), not by how much room is left below —
-    /// so padding or shrinking the `ScrollView`'s own frame cannot move
-    /// `HourSlider` out of the band; only giving the card more headroom
-    /// above the band can. That's `hourCompactFraction`, defined above
-    /// `body`, doing the actual work here.
-    private var hourContent: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Map hour")
-                    .font(.title2.bold())
-                    .foregroundStyle(Color("MutedOnSurface"))
-                    .accessibilityAddTraits(.isHeader)
-                    .accessibilityIdentifier("hourSegmentTitle")
-                Spacer()
-                closeButton
-            }
-            .padding()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    HourReadout(readout: hourReadout)
-                    HourSlider(selectedHour: $selectedHour, readout: hourReadout)
-                }
-                .padding(.horizontal)
-                .padding(.bottom, 24)
-            }
-        }
-        .dynamicTypeSize(...Self.maxDynamicTypeSize)
     }
 
     private func handleDragEnd(_ value: DragGesture.Value) {

@@ -522,14 +522,14 @@ struct MapScreen: View {
                 // drag handle, opaque `Color("Surface")` — the z3 tap-catcher
                 // above is a separate layer, not part of this view.
                 //
-                // T-078/`PAS-60` reopened: also carries the Hour segment
-                // (formerly `HeatModalCard`) — same `selectedHourBinding`/
-                // `currentReadout` this screen already fed to it.
+                // T-081/`PAS-76`: no longer carries an Hour segment —
+                // `EdgeHourTrack`/`EdgeHourZone` below ("the sides") already
+                // write `selectedHourBinding`, so the in-modal control this
+                // screen used to also feed (T-078/`PAS-60`) was redundant
+                // and has been removed.
                 SearchOverlay(
                     session: searchSession,
                     results: searchResults,
-                    selectedHour: selectedHourBinding,
-                    hourReadout: currentReadout,
                     onSelect: handleSearchResultSelection,
                     onDismiss: dismissSearch
                 )
