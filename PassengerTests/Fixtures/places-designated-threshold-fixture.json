@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-08T00:00:00Z",
+  "city": "tel-aviv",
+  "places": [
+    {
+      "id": "borderline-open",
+      "name": "Borderline Open Place",
+      "category": "eat-drink",
+      "hood_id": "borderline-hood",
+      "latitude": 32.052,
+      "longitude": 34.762,
+      "permanently_closed": false,
+      "place_type": "cafe",
+      "keywords": []
+    },
+    {
+      "id": "borderline-closed",
+      "name": "Borderline Closed Place",
+      "category": "eat-drink",
+      "hood_id": "borderline-hood",
+      "latitude": 32.053,
+      "longitude": 34.763,
+      "permanently_closed": true,
+      "place_type": "cafe",
+      "keywords": []
+    }
+  ]
+}
