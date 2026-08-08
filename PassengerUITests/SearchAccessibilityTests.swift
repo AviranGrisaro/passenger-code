@@ -76,6 +76,36 @@ final class SearchAccessibilityTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(element.frame.height + Self.epsilon, 44, "\(context) height below 44pt: \(element.frame)")
     }
 
+    // MARK: - Toggle-closes the overlay (T-087/`PAS-85`)
+    //
+    // `T-081`/`PAS-76` deleted `SearchHourSegmentInteractionTests.swift`
+    // along with `SearchOverlay`'s Hour segment — that file happened to be
+    // the only UI-level coverage for "tap the nav-row Search button again
+    // while the overlay is open → it closes" (`MapChromeState.toggle`'s
+    // exclusivity rule, unit-tested at
+    // `MapChromeStateTests.toggleOnOpenSurfaceCloses()`, and confirmed
+    // working live during `T-081`'s own `ios-code-reviewer`/`qa` passes).
+    // This restores permanent UI-level coverage for that path. Unlike the
+    // deleted file, there is no more "Search"-labeled segment inside the
+    // overlay to disambiguate from (T-081 removed `SearchOverlay`'s own
+    // Search/Hour picker), so `app.buttons["Search"]` unambiguously
+    // resolves to the nav-row `SearchButton` both before and after it opens
+    // the overlay — no `.matching(NSPredicate:)`/`boundBy:` lookup needed,
+    // unlike the older `PlacesListInteractionTests` "Close" cases.
+    func testTappingSearchButtonAgainDismissesTheOverlay() {
+        openSearch()
+
+        let searchButton = app.buttons["Search"]
+        searchButton.tap()
+
+        XCTAssertFalse(
+            app.staticTexts["Search"].waitForExistence(timeout: 2),
+            "SearchOverlay stayed open (field label still rendered) after re-tapping SearchButton"
+        )
+        XCTAssertFalse(app.otherElements["searchOverlayCard"].exists, "searchOverlayCard still in the tree after re-tapping SearchButton to close it")
+        XCTAssertTrue(app.maps.firstMatch.exists, "Map should still be present after the overlay closes")
+    }
+
     // MARK: - §9 row 8(a): 44pt frames
 
     func testSearchButtonAndChipsMeetMinimumTouchTarget() {
