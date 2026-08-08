@@ -119,19 +119,22 @@ final class PlacesListInteractionTests: XCTestCase {
 
     // MARK: - D8 co-presentation guard, live (TRD §4.6/§9 row 8b/8c)
 
-    /// T-078/`PAS-60` reopened: `HeatButton` is deleted — the Hour slider
-    /// now lives inside `SearchOverlay`'s "Hour" segment, reached via
-    /// `SearchButton`. `.search`/`.places` is still a `NavSurface`/system
-    /// presentation pair, so this remains a live D8 co-presentation check.
-    func testOpeningPlacesWhileSearchHourOpenReplacesItWithPlaces() {
-        app.buttons["Search and hours"].tap()
-        app.buttons["Hour"].tap()
-        XCTAssertTrue(app.sliders["hourSlider"].waitForExistence(timeout: 5), "Hour segment never opened")
+    /// T-078/`PAS-60` reopened: `HeatButton` was deleted when the Hour
+    /// slider moved inside `SearchOverlay`'s own "Hour" segment. **T-081/
+    /// `PAS-76`:** that Hour segment is itself now deleted (`EdgeHourZone`/
+    /// `EdgeHourTrack`, "the sides", already cover hour selection), so this
+    /// test opens plain Search instead of switching to Hour first — the
+    /// thing under test is still `.search`/`.places` being a `NavSurface`/
+    /// system presentation pair that must never co-present, which the Hour
+    /// segment's presence was never load-bearing for.
+    func testOpeningPlacesWhileSearchOpenReplacesItWithPlaces() {
+        app.buttons["Search"].tap()
+        XCTAssertTrue(app.staticTexts["Search"].waitForExistence(timeout: 5), "SearchOverlay never opened")
 
         app.buttons["Places"].tap()
 
-        XCTAssertTrue(app.buttons[closedRowLabel].waitForExistence(timeout: 5), "Places list never opened over an already-presented Search/Hour surface")
-        XCTAssertFalse(app.sliders["hourSlider"].exists, "D8: a NavSurface and a system-level presentation must never co-present — SearchOverlay should have closed when Places opened, not stacked underneath")
+        XCTAssertTrue(app.buttons[closedRowLabel].waitForExistence(timeout: 5), "Places list never opened over an already-presented Search surface")
+        XCTAssertFalse(app.staticTexts["Search"].exists, "D8: a NavSurface and a system-level presentation must never co-present — SearchOverlay should have closed when Places opened, not stacked underneath")
     }
 
     /// NOTE (QA finding, non-blocking, filed below in the worklog): a raw
@@ -188,7 +191,7 @@ final class PlacesListInteractionTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["placeDetailTitle"].waitForExistence(timeout: 2), "Place-detail modal did not dismiss via its own close button")
         XCTAssertTrue(closedRow.waitForExistence(timeout: 5), "Dismissing the stacked place modal should reveal the list unchanged underneath (TRD §5) — the same row should still be there")
 
-        app.buttons["Search and hours"].tap()
+        app.buttons["Search"].tap()
 
         XCTAssertTrue(app.staticTexts["Search"].waitForExistence(timeout: 5), "SearchOverlay never opened when switching away from a bare (unstacked) Places list")
         XCTAssertFalse(closedRow.exists, "D8: leaving .places must close the list, not leave it presented underneath Search")

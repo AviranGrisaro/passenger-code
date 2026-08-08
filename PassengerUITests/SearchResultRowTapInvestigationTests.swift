@@ -64,7 +64,7 @@ final class SearchResultRowTapInvestigationTests: XCTestCase {
         let map = app.maps.firstMatch
         XCTAssertTrue(map.waitForExistence(timeout: 5), "Map never appeared")
 
-        let searchButton = app.buttons["Search and hours"]
+        let searchButton = app.buttons["Search"]
         XCTAssertTrue(searchButton.waitForExistence(timeout: 5), "SearchButton never appeared in MapNavRow")
         searchButton.tap()
 

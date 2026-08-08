@@ -43,11 +43,12 @@ final class SearchAccessibilityTests: XCTestCase {
         let map = app.maps.firstMatch
         XCTAssertTrue(map.waitForExistence(timeout: 5), "Map never appeared")
 
-        // "Search and hours", not "Search" (`PAS-75`, T-079 re-fix,
-        // 2026-08-07): `SearchButton`'s VoiceOver label was renamed to stop
-        // colliding with `SearchOverlay`'s own "Search" segment label once
-        // the overlay is open — see that file's doc comment.
-        let searchButton = app.buttons["Search and hours"]
+        // Plain "Search" again as of T-081/`PAS-76` — `PAS-75`'s "Search
+        // and hours" rename existed only to disambiguate from
+        // `SearchOverlay`'s own Search/Hour segmented control, which is now
+        // deleted along with the Hour segment. See `SearchButton`'s doc
+        // comment.
+        let searchButton = app.buttons["Search"]
         XCTAssertTrue(searchButton.waitForExistence(timeout: 5), "SearchButton never appeared in MapNavRow")
         searchButton.tap()
 
@@ -80,14 +81,11 @@ final class SearchAccessibilityTests: XCTestCase {
     func testSearchButtonAndChipsMeetMinimumTouchTarget() {
         openSearch()
 
-        // T-078/`PAS-60` reopened: `SearchOverlay`'s own Search/Hour
-        // segmented control also renders a "Search"-labeled element once
-        // the overlay is open. `PAS-75`'s fix (T-079 re-fix, 2026-08-07)
-        // renamed `SearchButton`'s own label to "Search and hours", so the
-        // two no longer collide — a direct lookup is unambiguous again,
-        // the `NSPredicate` disambiguation this comment used to describe is
-        // no longer needed.
-        meetsMinimumTarget(app.buttons["Search and hours"], "SearchButton")
+        // Plain "Search" again as of T-081/`PAS-76` — `SearchOverlay`'s own
+        // Search/Hour segmented control (the thing "Search and hours" used
+        // to disambiguate from, per `PAS-75`) is deleted along with the
+        // Hour segment, so a direct lookup is unambiguous.
+        meetsMinimumTarget(app.buttons["Search"], "SearchButton")
         meetsMinimumTarget(app.buttons["Eat & Drink"], "Eat & Drink chip")
         meetsMinimumTarget(app.buttons["Things to do"], "Things to do chip")
     }
