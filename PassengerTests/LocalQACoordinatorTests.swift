@@ -57,6 +57,31 @@ struct LocalQACoordinatorTests {
         #expect(coordinator.toastState == nil)
     }
 
+    /// Suspends until `coordinator.toastState` satisfies `predicate`, by
+    /// repeatedly yielding the MainActor executor rather than sleeping a
+    /// fixed window (PAS-62). `coordinator.start()`'s `for await` loop and
+    /// this test both run as MainActor tasks, so the event this test yields
+    /// into `source` only becomes visible in `toastState` once the
+    /// scheduler actually gives that loop a turn — a single hardcoded sleep
+    /// is a guess at how long that takes, and under machine load the guess
+    /// can be wrong. Yielding in a loop isn't a guess: it keeps handing the
+    /// executor a chance to run the coordinator's pending work and returns
+    /// the instant the real state change is observed, however many turns
+    /// that took. `timeout` is a safety net for a genuine hang, not the
+    /// synchronization mechanism — it should essentially never be hit.
+    @MainActor
+    private static func waitForToastState(
+        on coordinator: LocalQACoordinator,
+        until predicate: (LocalQACoordinator.ToastState?) -> Bool,
+        timeout: Duration = .seconds(5)
+    ) async {
+        let deadline = ContinuousClock.now + timeout
+        while !predicate(coordinator.toastState) {
+            guard ContinuousClock.now < deadline else { return }
+            await Task.yield()
+        }
+    }
+
     @Test("an offer-eligible event sets toastState to .asking")
     func offerEligibleEventAsks() async {
         let (coordinator, source) = Self.makeCoordinator()
@@ -64,10 +89,7 @@ struct LocalQACoordinatorTests {
 
         let task = Task { await coordinator.start() }
         source.continuation.yield(event)
-        // Yield control so the coordinator's `for await` loop can process
-        // the one event before this test inspects state.
-        await Task.yield()
-        try? await Task.sleep(for: .milliseconds(50))
+        await Self.waitForToastState(on: coordinator) { $0 == .asking(event) }
 
         #expect(coordinator.toastState == .asking(event))
         task.cancel()
@@ -81,9 +103,25 @@ struct LocalQACoordinatorTests {
 
         let task = Task { await coordinator.start() }
         source.continuation.yield(first)
-        try? await Task.sleep(for: .milliseconds(50))
+        // Deterministic: wait for the real state this test asserts on.
+        await Self.waitForToastState(on: coordinator) { $0 == .asking(first) }
+
         source.continuation.yield(second)
-        try? await Task.sleep(for: .milliseconds(50))
+        // Best-effort only, disclosed rather than implied deterministic: a
+        // drop (TRD §11 C11) never mutates `toastState`, so there is no
+        // observable signal to wait on for "the coordinator's `for await`
+        // loop actually dequeued and discarded `second`" — AsyncStream's
+        // FIFO ordering guarantees `first` is fully handled before `second`
+        // is even considered (both were already buffered before either was
+        // processed), so the assertion below is correct and stable
+        // regardless of whether this loop gives `second` a turn before it
+        // runs. These yields exist only to give the guard-drop code path a
+        // real chance to execute for coverage, not for correctness — unlike
+        // a fixed sleep, they cost real scheduler turns rather than wall-clock
+        // time, so they don't reintroduce a load-sensitive window.
+        for _ in 0..<10 {
+            await Task.yield()
+        }
 
         #expect(coordinator.toastState == .asking(first))
         task.cancel()
