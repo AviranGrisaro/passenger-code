@@ -39,6 +39,21 @@ struct PlaceTypeRegistryTests {
         #expect(Set(registry.registeredPlaceTypes) == ["bar", "cafe", "landmark", "market", "museum", "restaurant"])
     }
 
+    /// `PAS-90` — the rawValue rename (`.columns` → `.artframe`) is a Swift
+    /// compile-time-safe change, but `place-types-tel-aviv.json`'s
+    /// `"museum": "artframe"` string is not: `PlaceTypeRegistry.decode`
+    /// silently drops any key whose value doesn't match a live
+    /// `StickerShape` rawValue (`compactMapValues`), so a stale or
+    /// mistyped JSON string would compile clean and just resolve "museum"
+    /// to `.generic` at runtime — the exact failure mode this test exists
+    /// to catch by loading the real shipped file and asserting the exact
+    /// non-generic case, not merely "not .generic".
+    @Test("the shipped registry resolves \"museum\" to the renamed .artframe case, not .generic")
+    func museumResolvesToTheRenamedArtframeCase() {
+        let registry = PlaceTypeRegistry.shared
+        #expect(registry.shape(for: "museum") == .artframe)
+    }
+
     // MARK: - Fallback behaviour (defence in depth, §3.3)
 
     @Test("an unregistered place_type resolves to .generic, never a crash")
