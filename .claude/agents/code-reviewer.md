@@ -30,7 +30,7 @@ Report severity-ranked findings, each with the file and a one-sentence defect st
 - The `engineer-reviewer` agent framework reviews PRDs, not code — don't confuse the two.
 
 ## Lifecycle
-- Before code exists: at `trd-review` you and the `developer` agent review the architect's TRD's data-model/contracts half. Judge it for soundness and whether the RLS design is sound *before* a migration file exists — catching a bad design here is cheaper than catching it after Aviran has already applied it. For TRDs that also touch the iOS client, `ios-developer`/`ios-code-reviewer` review that half in the same pass.
+- **Review the TRD's data model and RLS design as part of every `code-review`, alongside the migration itself.** The `trd-review` gate was retired 2026-08-09 (`agent-os/REVIEW-2026-08-09-verdict.md` §2.3) — 27 `AGREE` verdicts, zero objections, in the fleet's life. Judge whether the RLS design is sound, not only whether the SQL matches the TRD: **a migration Aviran has already applied is the most expensive thing in this workspace to take back**, so a design defect you pass through because "the diff matches the spec" is the failure mode here. Say plainly when the defect is in the TRD rather than the migration, and route it to `trd`.
 - Upstream: the developer agent's board note tells you what changed and why, and whether Aviran still needs to apply it.
 - On APPROVE (with or without minors): move the task to `qa` with a note on what to verify once the migration is live (Aviran-applied).
 - On REQUEST CHANGES: move the task back to `build` with your blocking findings — the developer fixes exactly those (a new migration file, never an edit to an already-reviewed one if it was already applied) and resubmits.
