@@ -81,14 +81,14 @@ struct PlacesListOverlay: View {
         // the dismiss paths, independent of the nav row either way.
         // (`.ignoresSafeArea` itself lives on `body`'s outer `ZStack`, not
         // here — see that modifier's comment for why.)
-        .background(
-            Color("Surface"),
-            in: UnevenRoundedRectangle(
-                topLeadingRadius: 20, bottomLeadingRadius: 0,
-                bottomTrailingRadius: 0, topTrailingRadius: 20,
-                style: .continuous
-            )
-        )
+        // T-106/`PAS-106`, Aviran-direct: Liquid Glass, not opaque
+        // `Color("Surface")`. This reverses `PAS-27`/T-036's own
+        // `.thickMaterial` → opaque fix (translucent-over-map made text
+        // unreadable) — deliberately, not rediscovered. Full rationale,
+        // the contrast-test blind spot this reintroduces, and the
+        // readability tradeoff Aviran accepted: `ModalGlassBackground`'s
+        // doc comment (`Support/ModalGlassBackground.swift`).
+        .modalGlassBackground()
     }
 
     private var dragHandle: some View {

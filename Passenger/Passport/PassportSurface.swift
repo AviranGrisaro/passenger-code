@@ -6,11 +6,14 @@ import SwiftUI
 /// the nav row and breaks `ux-flows.md` §2.1's direct-switch rule. Owns its
 /// own scrim rather than sharing a component, mirroring `PlacesListOverlay`.
 ///
-/// Opaque `Color("Surface")` background, not `.glassEffect()` or a
-/// `Material` — this card sits directly over the live map, and
-/// `design-principles.md`'s contrast-verifiability rule (the lesson behind
-/// T-036's own `.thickMaterial` → `Color("Surface")` fix) rules out
-/// translucent chrome over dynamic content here for the same reason.
+/// **Liquid Glass background (T-106/`PAS-106`, Aviran-direct, 2026-08-09)**
+/// — this card used to render an opaque `Color("Surface")` background
+/// specifically because it sits directly over the live map and translucent
+/// chrome over dynamic content had already shipped an unreadable-text bug
+/// once (`PAS-27`/T-036's `.thickMaterial` → `Color("Surface")` fix). That
+/// rule is deliberately reversed here, not rediscovered as a regression —
+/// see `ModalGlassBackground`'s doc comment (`Support/ModalGlassBackground.swift`)
+/// for the full rationale and the readability tradeoff Aviran accepted.
 ///
 /// No sticker and no Hood row is tappable in V1 (D10) — the ✕ and the drag
 /// handle are the only interactive elements, so there is no path from this
@@ -89,14 +92,9 @@ struct PassportSurface: View {
         // dismiss paths, independent of the nav row either way.
         // (`.ignoresSafeArea` itself lives on `body`'s outer `ZStack`, not
         // here — see that modifier's comment for why.)
-        .background(
-            Color("Surface"),
-            in: UnevenRoundedRectangle(
-                topLeadingRadius: 20, bottomLeadingRadius: 0,
-                bottomTrailingRadius: 0, topTrailingRadius: 20,
-                style: .continuous
-            )
-        )
+        // T-106/`PAS-106`: Liquid Glass, not opaque `Color("Surface")` —
+        // see the type's doc comment and `ModalGlassBackground` for why.
+        .modalGlassBackground()
     }
 
     private var dragHandle: some View {

@@ -105,14 +105,17 @@ struct HoodSheet: View {
             .frame(maxHeight: 480)
             .fixedSize(horizontal: false, vertical: true)
         }
-        .background(
-            Color("Surface"),
-            in: UnevenRoundedRectangle(
-                topLeadingRadius: 20, bottomLeadingRadius: 0,
-                bottomTrailingRadius: 0, topTrailingRadius: 20,
-                style: .continuous
-            )
-        )
+        // T-106/`PAS-106`, Aviran-direct: Liquid Glass, not opaque
+        // `Color("Surface")`. Reverses `PAS-27`/T-036's own `.thickMaterial`
+        // → opaque fix (translucent-over-map made text unreadable) —
+        // deliberately, not rediscovered. **Nested-glass note:** when Site
+        // B (`PlaceDetailModal`, below) is open over this card, its own
+        // full-screen scrim sits between the two glass layers — see that
+        // type's doc comment. Full rationale, the contrast-test blind spot
+        // this reintroduces, and the readability tradeoff Aviran accepted:
+        // `ModalGlassBackground`'s doc comment
+        // (`Support/ModalGlassBackground.swift`).
+        .modalGlassBackground()
     }
 
     private var dragHandle: some View {

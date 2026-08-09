@@ -62,14 +62,14 @@ struct SearchOverlay: View {
             // surface's own close button and drag-to-dismiss (plus
             // `MapScreen`'s separate z3 tap-outside-to-dismiss catcher) are
             // the dismiss paths, independent of the nav row either way.
-            .background(
-                Color("Surface"),
-                in: UnevenRoundedRectangle(
-                    topLeadingRadius: 20, bottomLeadingRadius: 0,
-                    bottomTrailingRadius: 0, topTrailingRadius: 20,
-                    style: .continuous
-                )
-            )
+            // T-106/`PAS-106`, Aviran-direct: Liquid Glass, not opaque
+            // `Color("Surface")`. Reverses `PAS-27`/T-036's own
+            // `.thickMaterial` → opaque fix (translucent-over-map made text
+            // unreadable) — deliberately, not rediscovered. Full rationale,
+            // the contrast-test blind spot this reintroduces, and the
+            // readability tradeoff Aviran accepted: `ModalGlassBackground`'s
+            // doc comment (`Support/ModalGlassBackground.swift`).
+            .modalGlassBackground()
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             // `.ignoresSafeArea(edges: .bottom)` must be the outermost
             // modifier — the true render-space extent it grants only

@@ -56,6 +56,19 @@ struct SettingsHintContrastTests {
 /// `SettingsHintContrastTests`: resolves the real Asset Catalog color sets
 /// under real light/dark trait collections rather than duplicating hex
 /// literals, so this stays correct if a designer edits the catalog later.
+///
+/// **Known blind spot, accepted deliberately (T-106/`PAS-106`, 2026-08-09):**
+/// `PlacesListOverlay`'s card background is now `.glassEffect()`
+/// (`ModalGlassBackground`, `Support/ModalGlassBackground.swift`), not the
+/// opaque `Color("Surface")` this suite was written against at `PAS-27`.
+/// `mutedOnSurfaceMeetsAA`/`badgeTokensMeetAA` below still pass — but they
+/// only ever measured the *static* `MutedOnSurface`/`BadgeOnSurface` vs.
+/// `Surface`/`BadgeSurface` color-pair math, which was already true before
+/// this change and stays true after it; they say nothing about the actual
+/// on-screen contrast once that card is composited over the live map, which
+/// is the case this reversal reintroduces. There is no unit-testable
+/// equivalent — see `design-principles.md` §8a for the human-eyeball-check
+/// process this now requires instead.
 @Suite("Places list contrast (§4.10)")
 struct PlacesListContrastTests {
     @Test("MutedOnSurface meets WCAG AA 4.5:1 against Surface, light and dark", arguments: [

@@ -98,14 +98,14 @@ struct EventDetailModal: View {
         // Full width, flush to the bottom edge, top-corners-only — matches
         // Group B's own shape exactly (see that construction's comment for
         // the modifier-order reasoning this one follows).
-        .background(
-            Color("Surface"),
-            in: UnevenRoundedRectangle(
-                topLeadingRadius: 20, bottomLeadingRadius: 0,
-                bottomTrailingRadius: 0, topTrailingRadius: 20,
-                style: .continuous
-            )
-        )
+        // T-106/`PAS-106`, Aviran-direct: Liquid Glass, not opaque
+        // `Color("Surface")`. Reverses `PAS-27`/T-036's own
+        // `.thickMaterial` → opaque fix (translucent-over-map made text
+        // unreadable) — deliberately, not rediscovered. Full rationale,
+        // the contrast-test blind spot this reintroduces, and the
+        // readability tradeoff Aviran accepted: `ModalGlassBackground`'s
+        // doc comment (`Support/ModalGlassBackground.swift`).
+        .modalGlassBackground()
     }
 
     private var dragHandle: some View {
