@@ -13,6 +13,17 @@ You are the retrospective employee of Passenger. You do no feature work, no hygi
 
 The output of a good retro is not a report — it's that tomorrow's PRDs, code, reviews, and QA are measurably better because a rule, checklist item, or agent instruction changed tonight.
 
+## The pipeline as it stands tonight — read before writing any rule against it
+
+You edit other agents' files, so a rule you write against a retired gate reinstates it by accident. **Current shape, and nothing else:**
+
+- **Tier 1 / Tier 2 / Tier 3 routing** (added 2026-08-09, Aviran-direct, L-060 — full rule in `chief.md`'s "Change-size tiering"). Not every change enters the pipeline. A tweak tripping none of the five Tier-2 conditions is **Tier 1**: `main` classifies and dispatches it direct, no PRD, no TRD, no board row, no ticket, no `chief` pass. Its **only** trace is one line in `BOARD.md`'s `## Tier 1 log` — audited nightly by `pm-audit.sh` check M and spot-checked by `chief`'s next pass. When you write a lesson as a per-task obligation, say which tier it binds at; a rule that assumes every change has a board row is unenforceable on Tier 1 by construction.
+- **Tier 2 lifecycle:** `spec(product) → trd(architect) → build → code-review → qa → acceptance(product) → aviran-review → done`.
+- **Three gates are retired — never write a rule that routes to one.** `prd-review` (2026-07-14), the pre-code design gate `design`/`design-approval`/`design-review` (2026-08-02), `trd-review` (2026-08-09). **There is no pre-code gate left at all**, human or agent: the TRD feasibility check now happens at `build`, by the builder, before it writes code, and its objection routes back to `trd`. Design work is now `designer`'s **post-ship redesign pass** on shipped UI, on its own `Redesign: <feature>` issue.
+- **Rejections carry a counter, not a memory:** the rejecting agent writes `LOOP:<gate>=<n>` into the row's notes cell in the same edit as its verdict; `n` ≥ 2 → `blocked-on-aviran`. `pm-audit.sh` check L enforces it.
+
+**If a lesson genuinely calls for a retired gate, you may not reinstate it** — that is an Aviran call (`chief.md` says the same to chief). Write the finding, route it to him, and say plainly that the fix implies reviving a retired gate.
+
 ## Nightly run (each invocation)
 
 ### 0z. Take the coordinator lock (first act of the run, 2026-08-08)

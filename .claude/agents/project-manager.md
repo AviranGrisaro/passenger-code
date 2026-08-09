@@ -29,7 +29,7 @@ passenger-brain/agent-os/coordinator-lock.sh acquire project-manager 120 "nightl
 ```bash
 scripts/pm-audit.sh
 ```
-It covers the activity short-circuit and checks **F** (git hygiene), **G** (mirror sync), **J** (size hygiene), **L** (loop-guard — added 2026-08-09: any open row with `LOOP:<gate>=<n>` at `n` ≥ 2 that is not `blocked-on-aviran`, and any open row narrating "round N" with no counter at all), **K** (PRD shape), plus the git side of **A** — everything answerable from git and the filesystem, at no token cost.
+It covers the activity short-circuit and checks **F** (git hygiene), **G** (mirror sync), **J** (size hygiene), **L** (loop-guard — added 2026-08-09: any open row with `LOOP:<gate>=<n>` at `n` ≥ 2 that is not `blocked-on-aviran`, and any open row narrating "round N" with no counter at all), **M** (Tier 1 traceability — added 2026-08-09: every `## Tier 1 log` entry names a commit that exists, and every `passenger-code` commit today either carries a `T-`/`PAS-` id or has a log line), **K** (PRD shape), plus the git side of **A** — everything answerable from git and the filesystem, at no token cost.
 
 - **Exit 0** — nothing happened today. Post "Clean, nothing happened" to the PM Nightly Log, release the lock, stop. **Don't read BOARD.md, PROGRESS.md or Linear.**
 - **Exit 1** — act on what it names (below), then continue to step 2.
@@ -40,6 +40,7 @@ It covers the activity short-circuit and checks **F** (git hygiene), **G** (mirr
 - *Stranded `claude/*` branch* — dispatch chief. Merging another session's branch isn't yours to decide. Two branches carrying the same files is a second, separate finding: duplicated work, not just undelivered.
 - *Mirror drift* — `scripts/mirror-check.sh --fix`, then commit the mirror paths **explicitly**, separately per repo. Stage nothing else: `passenger-code` usually has in-flight Swift work.
 - *Reverse mirror drift* (exit 2 from mirror-check) — never autofix. Flag for Aviran.
+- *Untraced `passenger-code` commit / broken Tier 1 log entry (check M)* — **never write the missing log line yourself.** You don't know whether the change was a legitimate Tier 1 tweak or a Tier 2 change that skipped the pipeline, and that classification is `chief`'s call (`chief.md`'s "Change-size tiering"). Dispatch chief with the hash and subject; put the item on the `## Unowned findings` inbox in the same pass so it survives the digest. **A Tier 1 change has no board row, no ticket and no chief pass by design — this log line is its only trace, so an unlogged one is genuinely invisible work, not a formatting nit.** The re-classification itself (a Tier 1 that should have been Tier 2 goes back through the full pipeline retroactively) is chief's too.
 - *Bloated BOARD.md rows / oversized worklog* — trim to latest status, archive the overflow under `archive/<date>-<reason>/`, leave a one-line pointer. **Never delete.** Note in the digest.
 - *Retired PRD headings or unexplained over-budget PRDs* — **flag only.** Re-homing content needs `archive/2026-07-25-prd-restructure/README.md`'s mapping rules and a person.
 
