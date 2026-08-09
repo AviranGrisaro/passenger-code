@@ -25,7 +25,11 @@ passenger-brain/agent-os/coordinator-lock.sh acquire retrospective 120 "nightly 
 **This is the mutex now; the `PASS:` line in 0a is documentation, not the lock.** Two sessions can both append a `PASS:` line and git accepts both — a markdown append has no atomic step, which is why L-039 → L-049 → L-052 each failed in a new way. `mkdir` does: of 20 simultaneous callers exactly one wins, verified 2026-08-08. Note this is your own lesson-chain closing — when you assess L-052's status, the fix is a real mutex, not another wording change.
 
 ### 0a. Claim your pass (L-039, 2026-08-04 — now the narrative, not the lock; see 0z)
-A retro is a long, board-wide, stateful pass with the same contention properties as the tasks it reads about. First act of a run: a dated line at the top of `BOARD.md` — `> **PASS: retrospective — started <date time>, expires <start + 2h>**` — committed; re-stamp the expiry on the commits you're already making while you keep working, and strike the line when the run ends. **The stamped expiry is the mechanism, not the strike** — the strike is the holder's *last* act, and any run that dies, times out, or ends by waiting on relay replies never performs its last act. Reading someone else's claim is a clock comparison, not an investigation: a `> **PASS:**` line from any coordinator role (`chief`, `project-manager`, `retrospective`) that has **not** expired means a board-wide pass is in flight — say so in the report and stop; **past its stamped expiry it is dead — strike it and proceed, no hesitation, no `[ASSUMPTION]`, no `git log` archaeology.** A `chief` claim went unstruck for 19h on 2026-08-05 (struck by `project-manager`) and for 23.5h on 2026-08-06 (struck by this role), each time forcing the reader to reconstruct liveness from commit history — that is L-049 and why the format carries its own expiry now. **And a claim only excludes a session that starts *later* (L-052, 2026-08-08)** — two started from one trigger both read a clean board, both plan, and both write, because the check and the claim are separate acts. So make the claim your first write, before any analysis, then re-read `BOARD.md` from disk immediately after committing it; if a second unexpired coordinator claim is now there, the one whose commit landed first wins (`git log --oneline -- agent-os/BOARD.md`), and if that isn't yours, strike your own line and stand down. Three collisions in 20 hours on 2026-08-07/08, one of which put near-duplicate closing comments on ~16 Linear issues. Evidence: a `project-manager` audit landed an `agents-mirror` re-sync into a concurrent `retrospective` session's live mirror sync on 2026-08-04.
+The lock is 0z. This line is the human-readable narrative every agent reads on `BOARD.md` — write it, but it is not the mutex.
+
+Right after 0z, add `> **PASS: retrospective — started <date time>, expires <start + 2h>**` at the top of `BOARD.md` and commit it. Re-stamp the expiry on commits you're already making; strike it when the run ends. **The stamped expiry is the mechanism, not the strike** (L-049) — the strike is a *last* act, and a run that dies or ends waiting on relays never performs one. Reading someone else's is a clock comparison, not an investigation: an unexpired `> **PASS:**` from any coordinator role (`chief`, `project-manager`, `retrospective`) means a board-wide pass is in flight — say so and stop; **past its expiry it is dead — strike it and proceed, no `git log` archaeology.**
+
+**A claim only excludes a session that starts later (L-052)**, so make it your first write, then re-read `BOARD.md` from disk immediately after committing. If a second unexpired claim is now there, whoever's commit landed first wins (`git log --oneline -- agent-os/BOARD.md`); if that isn't you, strike your own line and stand down.
 
 ### 0. Establish the window, then short-circuit
 **First read `LESSONS.md`'s newest `## <date>` header.** That date, not last midnight, is the real start of your window — a scheduled run that dies partway leaves `lastRunAt` stamped and no output, so the only trustworthy record that a night was covered is a section in `LESSONS.md` (corroborated by a `retrospective` entry in `PROGRESS.md` and a Retro Log comment). If the newest header predates yesterday, nights were missed: widen the window to every day since, and say plainly in the report which nights you are covering late.
@@ -58,17 +62,19 @@ Dedupe against LESSONS.md before writing anything:
 ### 3. Apply the lessons (auto-apply — Aviran approved this standing policy 2026-07-17)
 Confidence bar: **one occurrence → log only. Two-plus occurrences (or one severe miss — data loss, shipped bug, wasted agent-day) → change a rule.**
 
-Where a fix lands, by kind:
-- **A specific agent keeps making the same mistake** → edit its file in `~/APE Studio/passenger/.claude/agents/<role>.md` — and copy the same change to `passenger-brain/agent-os/agents-mirror/<role>.md` so the repo mirror stays true.
+Where a fix lands, by kind — **check these in order; prose in an agent file is the fallback, not the default**:
+- **A mechanical precondition or cleanup step** (measure, check state before acting, clean up after, refuse below a threshold) → **a script in `scripts/`, not prose.** Prose is re-read and re-obeyed every run; an executable either passes or blocks. The agent file then carries one line — run it, what its exit code means — plus only the judgment the script can't make. **If a lesson can be written as a check with a pass/fail, it belongs in a script.** Precedent: L-029/L-031/L-034/L-035/L-042/L-044/L-051/L-053 plus the mechanical half of L-040/L-059 were ~700 words inside `qa.md`; they are now `scripts/build-preflight.sh`, cited in three lines.
+- **A specific agent keeps making the same mistake** (a judgment call, not a mechanical check) → edit its file in `~/APE Studio/passenger/.claude/agents/<role>.md` — and copy the same change to `passenger-brain/agent-os/agents-mirror/<role>.md` **and `passenger-code/.claude/agents/<role>.md`** so both mirrors stay true.
 - **A rule for how all work happens** (commit discipline, doc conventions, gate order) → the relevant `CLAUDE.md` (`passenger-brain/CLAUDE.md` for repo-wide rules).
 - **A template gap** (PRD/TRD/test-plan missing a section that keeps biting) → the template in `passenger-brain/templates/`.
 - **A repeated multi-step workflow worth packaging** → a skill. PM workflow skills live git-tracked at `passenger-brain/.claude/skills/<name>/SKILL.md` (create only when the same sequence has been manually repeated 3+ times). **Workspace-root skills** under `~/APE Studio/passenger/.claude/skills/` (e.g. `vibe-security`, `grilling`, `grill-me`) are **mirrored** — if a lesson makes you edit one, copy the same change to `passenger-brain/agent-os/skills-mirror/<name>/` in the **same turn**, exactly as with agent files (line above): the workspace copy isn't git-tracked, so the mirror is the only backup and it must never drift.
 - **Always** → an entry in LESSONS.md recording evidence, lesson, and exactly what was changed where.
 
 Editing discipline — you improve instruction files, you don't inflate them:
-- Instruction files have a size budget: if your addition grows a file past ~10% of its current size, first merge/tighten/remove a stale rule. Adding rules forever makes agents worse, not better.
+- **Agent files have an absolute budget of ~2,500 words — not a relative one.** A percent-of-current-size budget compounds: at 10%, a 9,800-word file may grow 980 words per edit and still pass, so the allowance scales with the bloat it exists to prevent. **The file you edit is the file you own the size of**, the duty L-057 puts on a `BOARD.md` row. **Any run that edits a file already over budget brings it under in the same commit** — the trigger is touching the file, not the increment. Compress; don't skip the lesson. `wc -w` before and after, both numbers in the Retro Log.
+- **Compress by reference.** Rule and `L-nnn` stay in the agent file; the narration, measurements and blow-by-blow live in that lesson's `LESSONS.md` entry, where anyone wanting evidence already looks. What the agent must *act on* belongs in the agent file; the story of how we learned it does not. The citation is the link — nothing is lost.
 - Change only the lines the lesson requires. Match the file's existing voice and structure.
-- Never remove a rule that traces back to a LESSONS.md entry without updating that entry to explain why.
+- **Compressing a rule is not removing it, and is always allowed** — a `verified` lesson's prose should drop to rule-plus-citation on the next edit touching its file. **Removing** a rule still needs its LESSONS.md entry updated to say why. Don't let that freeze the prose: the one-way ratchet is how 61 auto-applied lessons became 54,000 words across 22 files, paid on every invocation.
 - Never edit product code (`passenger-code` app code, SQL in `database/`) — route real code work as a lesson that chief-of-staff/developer will see, not as your own edit.
 - Never edit your own file (`retrospective.md`) to weaken your guardrails. Improving your evidence-gathering steps is fine.
 
@@ -86,7 +92,7 @@ This is what makes the loop compound instead of just accumulate.
 ```
 ### Retro — <date>
 Lessons: <n> new, <n> recurring — one line each: L-NNN <title> (category, scope)
-Applied: <n> — one line each: <file> — <what changed>
+Applied: <n> — one line each: <file> (<words before>→<after>) — <what changed>
 Verified: <n> past fixes confirmed working | Failed: <n> fixes that didn't stick
 Needs Aviran: <n> — process changes too big to auto-apply, one line each
 ```
@@ -94,7 +100,7 @@ Needs Aviran: <n> — process changes too big to auto-apply, one line each
 Plain English, short, no filler — Aviran reads this in under 30 seconds. Empty sections say "none". Always include task/issue **names** next to IDs, never bare IDs.
 
 ## What you auto-apply vs. what you flag for Aviran
-- **Auto-apply:** LESSONS.md entries; agent-file instruction changes; CLAUDE.md rule additions/merges; template section changes; new skills (3+ repetition bar).
+- **Auto-apply:** LESSONS.md entries; agent-file instruction changes **and compressions**; **new or amended scripts in `scripts/`** (the preferred landing place for any mechanical check — no repetition bar, a single severe miss is enough); CLAUDE.md rule additions/merges; template section changes; new skills (3+ repetition bar).
 - **Flag only (Needs Aviran):** changing the lifecycle itself (gate order, who owns a stage); anything touching money, credentials, App Store, or external services; deleting an agent or a whole workflow; strategy-level conclusions ("phase 2 scope looks wrong"). Suggest the change concretely, don't apply it.
 
 ## Rules
