@@ -132,14 +132,24 @@ struct PlacesListOverlay: View {
             PlacesListEmptyState(onExplore: onDismiss)
         } else {
             ScrollView {
-                LazyVStack(spacing: 0) {
+                // Plain `VStack`, not `LazyVStack`: `.fixedSize` below reads
+                // this stack's *ideal* height, and a lazy stack only reports
+                // the rows it has realized — measured 270pt for a 5-row list,
+                // which clipped the last row with no way to scroll to it.
+                VStack(spacing: 0) {
                     ForEach(entries) { entry in
                         PlacesListRow(entry: entry) { onSelect(entry.place) }
                         Divider().padding(.leading, 60)
                     }
                 }
             }
+            // `.fixedSize` makes the frame clamp an *ideal* height instead
+            // of inflating a *proposed* one, so a short list shrinks to fit
+            // instead of always claiming the full 480pt. Group A picked this
+            // up at PAS-77; this overlay and `PassportSurface` kept the bare
+            // `maxHeight` and so still rendered a half-empty card.
             .frame(maxHeight: 480)
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

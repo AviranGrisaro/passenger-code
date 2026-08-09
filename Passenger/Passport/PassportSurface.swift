@@ -145,6 +145,12 @@ struct PassportSurface: View {
             }
             .padding()
         }
+        // `.fixedSize` makes the frame clamp an *ideal* height instead of
+        // inflating a *proposed* one, so short content shrinks to fit
+        // instead of always claiming the full 480pt. Group A picked this up
+        // at PAS-77; this surface and `PlacesListOverlay` kept the bare
+        // `maxHeight` and so still rendered a half-empty card.
         .frame(maxHeight: 480)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
