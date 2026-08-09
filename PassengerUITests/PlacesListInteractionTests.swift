@@ -117,7 +117,42 @@ final class PlacesListInteractionTests: XCTestCase {
         XCTAssertTrue(app.maps.firstMatch.exists)
     }
 
-    // MARK: - D8 co-presentation guard, live (TRD §4.6/§9 row 8b/8c)
+    // MARK: - Nav row hidden while presented (T-099/`PAS-99`)
+
+    /// While `PlacesListOverlay` is open, all 3 of `MapNavRow`'s buttons —
+    /// not just the one that opened it — must be gone from the
+    /// accessibility tree entirely, along with the row's own `mapNavRow`
+    /// container element. Restored the instant the list's own Close button
+    /// dismisses it. This reverses the "always hit-testable" behavior the
+    /// three dismissal-path tests above still rely on for *this* surface's
+    /// own affordances (scrim/drag/close), none of which live on the nav
+    /// row and so are unaffected by hiding it.
+    ///
+    /// **`PAS-97` (merged into `PAS-99`):** `app.buttons["Close"]` resolves
+    /// through the same `UIAccessibility` tree VoiceOver/Switch Control
+    /// read, so its existence and exact `.label` below are live proof the
+    /// surviving dismiss path is reachable and correctly labeled under
+    /// both, not just by touch — see `MapNavRow`'s header comment.
+    func testNavRowIsHiddenWhilePlacesListIsOpenAndReappearsOnDismiss() {
+        app.buttons["Places"].tap()
+        XCTAssertTrue(app.buttons[closedRowLabel].waitForExistence(timeout: 5))
+
+        XCTAssertFalse(app.buttons["Places"].exists, "Places button still in the tree while its own list is open")
+        XCTAssertFalse(app.buttons["Search"].exists, "Search button still in the tree while Places list is open")
+        XCTAssertFalse(app.buttons["Profile"].exists, "Profile button still in the tree while Places list is open")
+        XCTAssertFalse(app.otherElements["mapNavRow"].exists, "mapNavRow container still in the tree while Places list is open")
+
+        let closeButton = app.buttons["Close"]
+        XCTAssertTrue(closeButton.exists, "Close button not reachable via the accessibility tree while the Places list is open")
+        XCTAssertEqual(closeButton.label, "Close", "Close button's VoiceOver/Switch Control label is wrong")
+        closeButton.tap()
+
+        XCTAssertTrue(app.buttons["Places"].waitForExistence(timeout: 5), "Places button did not reappear after dismissing the list")
+        XCTAssertTrue(app.buttons["Search"].exists, "Search button did not reappear after dismissing the Places list")
+        XCTAssertTrue(app.buttons["Profile"].exists, "Profile button did not reappear after dismissing the Places list")
+    }
+
+    // MARK: - D8 co-presentation guard (TRD §4.6/§9 row 8b/8c)
 
     /// T-078/`PAS-60` reopened: `HeatButton` was deleted when the Hour
     /// slider moved inside `SearchOverlay`'s own "Hour" segment. **T-081/
@@ -127,14 +162,35 @@ final class PlacesListInteractionTests: XCTestCase {
     /// thing under test is still `.search`/`.places` being a `NavSurface`/
     /// system presentation pair that must never co-present, which the Hour
     /// segment's presence was never load-bearing for.
-    func testOpeningPlacesWhileSearchOpenReplacesItWithPlaces() {
+    ///
+    /// **T-099/`PAS-99` (2026-08-09) changes what's live-reachable here.**
+    /// This test used to tap the nav-row `Places` button *while Search was
+    /// already open* to prove D8's exclusivity live (tapping the other
+    /// surface's button replaces, never stacks). `MapNavRow` is now hidden
+    /// entirely while any `NavSurface` is presented, so `app.buttons["Places"]`
+    /// does not exist while Search is open — that direct-switch UI action is
+    /// no longer physically reachable, the same class of "not reachable"
+    /// finding already documented below for the stacked place-modal case.
+    /// D8's exclusivity rule itself stays guarded regardless of UI
+    /// reachability, at `MapChromeStateTests.toggleToDifferentSurfaceReplaces()`.
+    /// What this test now proves live is the actual path a user has: Search
+    /// must be dismissed via its own Close button before the nav row
+    /// reappears and Places can be opened from it.
+    func testClosingSearchRestoresNavRowThenPlacesOpensCleanly() {
         app.buttons["Search"].tap()
         XCTAssertTrue(app.staticTexts["Search"].waitForExistence(timeout: 5), "SearchOverlay never opened")
 
-        app.buttons["Places"].tap()
+        XCTAssertFalse(app.buttons["Places"].exists, "Places button should not exist while Search is open (T-099/`PAS-99`)")
 
-        XCTAssertTrue(app.buttons[closedRowLabel].waitForExistence(timeout: 5), "Places list never opened over an already-presented Search surface")
-        XCTAssertFalse(app.staticTexts["Search"].exists, "D8: a NavSurface and a system-level presentation must never co-present — SearchOverlay should have closed when Places opened, not stacked underneath")
+        app.buttons["Close"].tap()
+        XCTAssertFalse(app.staticTexts["Search"].waitForExistence(timeout: 2), "SearchOverlay did not dismiss via its own Close button")
+
+        let placesButton = app.buttons["Places"]
+        XCTAssertTrue(placesButton.waitForExistence(timeout: 5), "Places button did not reappear after Search was dismissed")
+        placesButton.tap()
+
+        XCTAssertTrue(app.buttons[closedRowLabel].waitForExistence(timeout: 5), "Places list never opened after Search was dismissed")
+        XCTAssertFalse(app.staticTexts["Search"].exists, "SearchOverlay should be fully closed, not stacked underneath Places")
     }
 
     /// NOTE (QA finding, non-blocking, filed below in the worklog): a raw
@@ -166,7 +222,17 @@ final class PlacesListInteractionTests: XCTestCase {
     /// the nav row now genuinely on top of it (not a system sheet) — then
     /// switch surfaces from there. This test exercises exactly that path,
     /// which is what §9 row 8(c)'s "manual" layer can actually confirm live.
-    func testDismissingStackedPlaceModalRevealsListThenLeavingPlacesOpensSearch() {
+    ///
+    /// **T-099/`PAS-99` (2026-08-09) extends the "not reachable" reasoning
+    /// above one step further.** Once the stacked place modal is dismissed
+    /// and the bare list is revealed, `chrome.presented` is still `.places`
+    /// (never cleared by dismissing the modal) — so `MapNavRow` stays
+    /// hidden and a direct `app.buttons["Search"]` tap from here is no
+    /// longer reachable either. Switching to Search now requires
+    /// dismissing the list first via its own Close button (already proven
+    /// reachable above, in `testDismissViaCloseButtonReturnsToListlessMap`),
+    /// which restores the nav row; only then can Search be opened from it.
+    func testDismissingStackedPlaceModalRevealsListThenClosingRestoresNavRowForSearch() {
         app.buttons["Places"].tap()
         let closedRow = app.buttons[closedRowLabel]
         XCTAssertTrue(closedRow.waitForExistence(timeout: 5))
@@ -191,9 +257,20 @@ final class PlacesListInteractionTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["placeDetailTitle"].waitForExistence(timeout: 2), "Place-detail modal did not dismiss via its own close button")
         XCTAssertTrue(closedRow.waitForExistence(timeout: 5), "Dismissing the stacked place modal should reveal the list unchanged underneath (TRD §5) — the same row should still be there")
 
-        app.buttons["Search"].tap()
+        // `chrome.presented` is still `.places` here — the modal's own
+        // dismissal only cleared `detailRouter`'s state, not the nav
+        // surface underneath it — so `MapNavRow` stays hidden (T-099/
+        // `PAS-99`) until the list itself is dismissed.
+        XCTAssertFalse(app.buttons["Search"].exists, "Search button should not exist while the Places list is still open, even with its stacked modal gone")
 
-        XCTAssertTrue(app.staticTexts["Search"].waitForExistence(timeout: 5), "SearchOverlay never opened when switching away from a bare (unstacked) Places list")
+        app.buttons["Close"].tap()
+        XCTAssertFalse(closedRow.waitForExistence(timeout: 2), "Places list did not dismiss via its own Close button")
+
+        let searchButton = app.buttons["Search"]
+        XCTAssertTrue(searchButton.waitForExistence(timeout: 5), "Search button did not reappear after dismissing the Places list")
+        searchButton.tap()
+
+        XCTAssertTrue(app.staticTexts["Search"].waitForExistence(timeout: 5), "SearchOverlay never opened after leaving Places")
         XCTAssertFalse(closedRow.exists, "D8: leaving .places must close the list, not leave it presented underneath Search")
     }
 }

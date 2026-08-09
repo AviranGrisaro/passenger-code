@@ -79,11 +79,14 @@ struct PassportSurface: View {
         // the bottom edge, top-corners-only — matches the shape the system
         // sheet presenter (Group A: `EventDetailModal`/`PlaceDetailModal`/
         // `HoodSheet`) already renders, so both groups read as one family
-        // instead of the old floating/inset card. `MapNavRow` (z7, drawn
-        // last in `MapScreen`) still renders and stays hit-testable above
-        // this surface by z-order, not by this card stopping short of the
-        // row. This surface still owns its own presentation (per the header
-        // comment above) — matching shape only, not adopting the presenter.
+        // instead of the old floating/inset card. **T-099/`PAS-99`:**
+        // `MapNavRow` (z7) is no longer drawn at all while this surface is
+        // presented — it used to stay hit-testable above this surface by
+        // z-order; that rule is reversed now, see `MapNavRow`'s header
+        // comment. This surface still owns its own presentation (per the
+        // header comment above) — matching shape only, not adopting the
+        // presenter, and its own scrim/close button/drag (above) are the
+        // dismiss paths, independent of the nav row either way.
         // (`.ignoresSafeArea` itself lives on `body`'s outer `ZStack`, not
         // here — see that modifier's comment for why.)
         .background(
@@ -116,6 +119,12 @@ struct PassportSurface: View {
         .padding()
     }
 
+    /// **T-099/`PAS-99`:** since `MapNavRow` is hidden while Passport is
+    /// presented, this is now the primary dismiss affordance for VoiceOver
+    /// and Switch Control users, not only for touch — a plain `Button`,
+    /// never `.accessibilityHidden`, reachable through the same
+    /// accessibility tree either technology reads. See `MapNavRow`'s header
+    /// comment for the full reasoning.
     private var closeButton: some View {
         Button(action: onDismiss) {
             Image(systemName: "xmark.circle.fill")

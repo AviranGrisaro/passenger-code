@@ -1,14 +1,68 @@
 import SwiftUI
 
-/// The always-visible nav row (T-032 D1/D6, TRD §2.3 z7): "separate
-/// side-by-side buttons, no shared container chrome" — so the search button
-/// (search-quick-filters TRD §11 C6) and the profile/Passport button
-/// (passport TRD §11 C7) sit here with no re-layout and no shared
-/// background, border, or grouping added.
+/// The nav row (T-032 D1/D6, TRD §2.3 z7): "separate side-by-side buttons,
+/// no shared container chrome" — so the search button (search-quick-filters
+/// TRD §11 C6) and the profile/Passport button (passport TRD §11 C7) sit
+/// here with no re-layout and no shared background, border, or grouping
+/// added.
 ///
-/// Always visible, always hit-testable, never covered by this file's own
-/// z3/z5 additions elsewhere in `MapScreen` — it is the reason D1 there is
-/// what it is (TRD §2.3).
+/// **T-099/`PAS-99` (2026-08-09): no longer always visible — this is a
+/// deliberate reversal of the rule below, not an oversight.** T-032 D1/D6
+/// and T-078/`PAS-60` reopened (`nav-row-v2-redesign.md`) both established
+/// and then twice reaffirmed "always visible, always hit-testable, never
+/// covered" as this row's standing rule. Per Aviran's own direct
+/// instruction ("when opening any modal (from nav bar) remove the nav bar
+/// buttons"), that rule no longer holds while a surface this row itself
+/// opened is presented: `MapScreen` wraps this view's call site in
+/// `if !chrome.isPresenting`, so all 3 buttons are removed from the
+/// hierarchy entirely (not faded, not disabled — gone, along with this
+/// row's own `mapNavRow` accessibility container) for as long as
+/// `chrome.presented` is non-nil (`.search`, `.places`, or `.profile`), and
+/// restored the instant it clears (`chrome.dismiss()`/`chrome.toggle()`
+/// back to `nil`). Each of the 3 presented surfaces
+/// (`SearchOverlay`/`PlacesListOverlay`/`PassportSurface`) owns its own
+/// independent dismiss affordances (a "Close" button, a scrim tap, a
+/// downward drag) that don't depend on this row, so hiding it doesn't strand
+/// anyone inside a surface — see each surface's own file. **Not affected:**
+/// the depth-1 marker-tap destinations (Hood/Place/Event detail, via
+/// `MapScreen.depth1SheetContent()`) aren't opened from this row and don't
+/// touch `chrome.presented`, so this change doesn't apply to them.
+/// `architect` owes a follow-up doc-only note on `time-slider/TRD.md` §2.3
+/// z7 reflecting this (not a build blocker — flagged, not yet written as of
+/// this commit).
+///
+/// **Assistive technology (`PAS-97`, merged into this ticket after the
+/// initial dispatch): hiding this row must not strand a VoiceOver or Switch
+/// Control user inside a surface.** It doesn't, and the reason is
+/// structural, not something bolted on for this ticket: each surface's
+/// "Close" button (`closeButton` in `SearchOverlay`/`PlacesListOverlay`/
+/// `PassportSurface`) is a plain SwiftUI `Button` with an explicit
+/// `.accessibilityLabel("Close")`, never `.accessibilityHidden`, and lives
+/// entirely inside the presented surface's own view tree — none of that
+/// depends on this row or its 3 buttons being present. VoiceOver reaches it
+/// by the standard swipe-navigation order same as any other on-screen
+/// control, and Switch Control reaches it the same way it reaches any
+/// accessible `Button` — by scanning the same accessibility tree, not by a
+/// row-specific affordance. `SearchAccessibilityTests
+/// .testTappingCloseButtonDismissesTheOverlay`,
+/// `PlacesListInteractionTests.testDismissViaCloseButtonReturnsToListlessMap`,
+/// and `ProfileButtonInteractionTests
+/// .testTappingCloseButtonDismissesPassportAndRestoresNavRow` all drive this
+/// exact button through `XCUIElement`, which resolves through the same
+/// `UIAccessibility` tree VoiceOver and Switch Control read — that is live
+/// proof the element is reachable and correctly labeled, not just present
+/// in source. **Disclosed limitation:** this toolchain has no automated way
+/// to drive a live Switch Control scan or a live VoiceOver announcement
+/// inside a UI test (no simulator API for either, unlike the documented
+/// Dynamic Type route in `passenger-code/CLAUDE.md`'s Simulator facts) — the
+/// claim above is structural (a standard, labeled, unhidden `Button`, proven
+/// reachable via the same tree both technologies read), not a literal
+/// on-device AT recording. `MapNavRow`'s own 3 buttons already carried
+/// `.accessibilityLabel`s of their own (`SearchButton`/`ProfileButton`/
+/// `PlacesButton`) — hiding the row while a surface is open removes them
+/// from that tree entirely along with the row's `mapNavRow` container, so
+/// an AT user navigating the screen no longer lands on a button that reads
+/// as present but (per this same ticket) does nothing useful in that state.
 ///
 /// **PAS-42 (2026-08-04, founder-direct): 5 icon buttons lived here.**
 /// `NearMeButton` and `PlacesButton` moved in from a second, lower

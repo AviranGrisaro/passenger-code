@@ -76,7 +76,7 @@ final class SearchAccessibilityTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(element.frame.height + Self.epsilon, 44, "\(context) height below 44pt: \(element.frame)")
     }
 
-    // MARK: - Toggle-closes the overlay (T-087/`PAS-85`)
+    // MARK: - Dismiss via Close button (T-099/`PAS-99`, replaces T-087/`PAS-85`)
     //
     // `T-081`/`PAS-76` deleted `SearchHourSegmentInteractionTests.swift`
     // along with `SearchOverlay`'s Hour segment — that file happened to be
@@ -85,37 +85,89 @@ final class SearchAccessibilityTests: XCTestCase {
     // exclusivity rule, unit-tested at
     // `MapChromeStateTests.toggleOnOpenSurfaceCloses()`, and confirmed
     // working live during `T-081`'s own `ios-code-reviewer`/`qa` passes).
-    // This restores permanent UI-level coverage for that path. Unlike the
-    // deleted file, there is no more "Search"-labeled segment inside the
-    // overlay to disambiguate from (T-081 removed `SearchOverlay`'s own
-    // Search/Hour picker), so `app.buttons["Search"]` unambiguously
-    // resolves to the nav-row `SearchButton` both before and after it opens
-    // the overlay — no `.matching(NSPredicate:)`/`boundBy:` lookup needed,
-    // unlike the older `PlacesListInteractionTests` "Close" cases.
-    func testTappingSearchButtonAgainDismissesTheOverlay() {
+    // T-087/`PAS-85` restored permanent UI-level coverage for that path by
+    // re-tapping the nav-row `SearchButton` while the overlay was open.
+    //
+    // **T-099/`PAS-99` (2026-08-09) removes that path entirely:** `MapNavRow`
+    // is now hidden while any `NavSurface` is presented (see `MapNavRow`'s
+    // header comment), so `app.buttons["Search"]` does not exist once the
+    // overlay is open — there is nothing left to re-tap. The exclusivity
+    // rule this used to prove stays covered at the state level regardless
+    // (`MapChromeStateTests.toggleOnOpenSurfaceCloses()`); what needs live
+    // UI coverage now is the dismiss path that actually survives this
+    // change — `SearchOverlay`'s own "Close" button, always reachable
+    // whether or not the nav row is visible.
+    func testTappingCloseButtonDismissesTheOverlay() {
         openSearch()
 
-        let searchButton = app.buttons["Search"]
-        searchButton.tap()
+        app.buttons["Close"].tap()
 
         XCTAssertFalse(
             app.staticTexts["Search"].waitForExistence(timeout: 2),
-            "SearchOverlay stayed open (field label still rendered) after re-tapping SearchButton"
+            "SearchOverlay stayed open (field label still rendered) after tapping its Close button"
         )
-        XCTAssertFalse(app.otherElements["searchOverlayCard"].exists, "searchOverlayCard still in the tree after re-tapping SearchButton to close it")
+        XCTAssertFalse(app.otherElements["searchOverlayCard"].exists, "searchOverlayCard still in the tree after tapping Close")
         XCTAssertTrue(app.maps.firstMatch.exists, "Map should still be present after the overlay closes")
+    }
+
+    // MARK: - Nav row hidden while presented (T-099/`PAS-99`)
+
+    /// While `SearchOverlay` is open, all 3 of `MapNavRow`'s buttons — not
+    /// just the one that opened it — must be gone from the accessibility
+    /// tree entirely, along with the row's own `mapNavRow` container
+    /// element (`.accessibilityElement(children: .contain)` in
+    /// `MapNavRow.swift`). Restored the instant the overlay's own Close
+    /// button dismisses it.
+    ///
+    /// **`PAS-97` (merged into `PAS-99`): the surviving dismiss path must be
+    /// reachable and correctly labeled under VoiceOver/Switch Control, not
+    /// just by touch.** `app.buttons["Close"]` resolves through the same
+    /// `UIAccessibility` tree both technologies read, so its existence and
+    /// exact `.label` here are live proof of both — not source-reading. See
+    /// `MapNavRow`'s header comment for the full reasoning, including the
+    /// disclosed limitation (no simulator API to drive a literal Switch
+    /// Control scan or VoiceOver announcement).
+    func testNavRowIsHiddenWhileSearchOverlayIsOpenAndReappearsOnDismiss() {
+        openSearch()
+
+        XCTAssertFalse(app.buttons["Search"].exists, "Search button still in the tree while SearchOverlay is open")
+        XCTAssertFalse(app.buttons["Places"].exists, "Places button still in the tree while SearchOverlay is open")
+        XCTAssertFalse(app.buttons["Profile"].exists, "Profile button still in the tree while SearchOverlay is open")
+        XCTAssertFalse(app.otherElements["mapNavRow"].exists, "mapNavRow container still in the tree while SearchOverlay is open")
+
+        let closeButton = app.buttons["Close"]
+        XCTAssertTrue(closeButton.exists, "Close button not reachable via the accessibility tree while SearchOverlay is open")
+        XCTAssertEqual(closeButton.label, "Close", "Close button's VoiceOver/Switch Control label is wrong")
+        closeButton.tap()
+
+        XCTAssertTrue(app.buttons["Search"].waitForExistence(timeout: 5), "Search button did not reappear after dismissing SearchOverlay")
+        XCTAssertTrue(app.buttons["Places"].exists, "Places button did not reappear after dismissing SearchOverlay")
+        XCTAssertTrue(app.buttons["Profile"].exists, "Profile button did not reappear after dismissing SearchOverlay")
     }
 
     // MARK: - §9 row 8(a): 44pt frames
 
     func testSearchButtonAndChipsMeetMinimumTouchTarget() {
-        openSearch()
+        // Measured before opening the overlay, not via `openSearch()` —
+        // T-099/`PAS-99` hides `SearchButton` once the overlay is open, so
+        // its own touch target can only be measured while it's still on
+        // screen. The chip row, measured after, is unaffected either way.
+        app.launch()
+
+        let map = app.maps.firstMatch
+        XCTAssertTrue(map.waitForExistence(timeout: 5), "Map never appeared")
 
         // Plain "Search" again as of T-081/`PAS-76` — `SearchOverlay`'s own
         // Search/Hour segmented control (the thing "Search and hours" used
         // to disambiguate from, per `PAS-75`) is deleted along with the
         // Hour segment, so a direct lookup is unambiguous.
-        meetsMinimumTarget(app.buttons["Search"], "SearchButton")
+        let searchButton = app.buttons["Search"]
+        XCTAssertTrue(searchButton.waitForExistence(timeout: 5), "SearchButton never appeared in MapNavRow")
+        meetsMinimumTarget(searchButton, "SearchButton")
+        searchButton.tap()
+
+        let fieldLabel = app.staticTexts["Search"]
+        XCTAssertTrue(fieldLabel.waitForExistence(timeout: 5), "SearchOverlay never rendered — field label missing")
         meetsMinimumTarget(app.buttons["Eat & Drink"], "Eat & Drink chip")
         meetsMinimumTarget(app.buttons["Things to do"], "Things to do chip")
     }

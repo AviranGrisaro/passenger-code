@@ -536,19 +536,29 @@ struct MapScreen: View {
             }
         }
         .overlay(alignment: .bottom) {
-            // z7 (TRD §2.3): always visible, always hit-testable, never
-            // covered by this file's own z3/z4/z5 layers — drawn last among
-            // this file's overlays so it renders above all of them. 3 icon
-            // buttons (T-078/`PAS-60` reopened, down from PAS-42's 5) — see
-            // `MapNavRow`'s header comment for the full history.
-            MapNavRow(
-                isSearchPresented: chrome.presented == .search,
-                onSearchTap: handleSearchButtonTap,
-                isPassportPresented: chrome.presented == .profile,
-                onProfileTap: openPassport,
-                onPlacesTap: openPlacesList
-            )
-            .padding(.bottom, 32)
+            // z7 (TRD §2.3): hit-testable and drawn last among this file's
+            // z3/z4/z5 layers whenever it's shown, so it renders above all
+            // of them — but as of T-099/`PAS-99` it is no longer *always*
+            // shown. Deliberately hidden entirely (removed from the
+            // hierarchy, not faded/disabled) while any `NavSurface` is
+            // presented (`chrome.isPresenting`), restored the instant
+            // `chrome.dismiss()`/`chrome.toggle()` clears it back to `nil`.
+            // This reverses T-032 D1/D6's and T-078/`PAS-60` reopened's
+            // twice-reaffirmed "always visible, always hit-testable, never
+            // covered" rule for these 3 buttons specifically — see
+            // `MapNavRow`'s header comment for the full history and why.
+            // 3 icon buttons (T-078/`PAS-60` reopened, down from PAS-42's
+            // 5).
+            if !chrome.isPresenting {
+                MapNavRow(
+                    isSearchPresented: chrome.presented == .search,
+                    onSearchTap: handleSearchButtonTap,
+                    isPassportPresented: chrome.presented == .profile,
+                    onProfileTap: openPassport,
+                    onPlacesTap: openPlacesList
+                )
+                .padding(.bottom, 32)
+            }
         }
         .overlay(alignment: .bottom) {
             // Site A (TRD §4.2), no longer a `.sheet` (T-079/`PAS-73`

@@ -55,9 +55,13 @@ struct SearchOverlay: View {
             // Full width, top-corners-only (T-079/`PAS-73`,
             // `modal-shape-standard.md` §"the fix") — matches the system
             // `.sheet()` shape Group A already renders, so both groups read
-            // as one family. `MapNavRow` (z7, drawn last in `MapScreen`)
-            // still renders and stays hit-testable above this surface by
-            // z-order, not by this card stopping short of the row.
+            // as one family. **T-099/`PAS-99`:** `MapNavRow` (z7) is no
+            // longer drawn at all while this surface is presented — it used
+            // to stay hit-testable above this surface by z-order; that rule
+            // is reversed now, see `MapNavRow`'s header comment. This
+            // surface's own close button and drag-to-dismiss (plus
+            // `MapScreen`'s separate z3 tap-outside-to-dismiss catcher) are
+            // the dismiss paths, independent of the nav row either way.
             .background(
                 Color("Surface"),
                 in: UnevenRoundedRectangle(
@@ -145,6 +149,12 @@ struct SearchOverlay: View {
         .padding(.top, 4)
     }
 
+    /// **T-099/`PAS-99`:** since `MapNavRow` is hidden while this overlay is
+    /// presented, this is now the primary dismiss affordance for VoiceOver
+    /// and Switch Control users, not only for touch — a plain `Button`,
+    /// never `.accessibilityHidden`, reachable through the same
+    /// accessibility tree either technology reads. See `MapNavRow`'s header
+    /// comment for the full reasoning.
     private var closeButton: some View {
         Button(action: onDismiss) {
             Image(systemName: "xmark.circle.fill")
