@@ -116,8 +116,22 @@ struct MapScreenD8WiringTests {
         #expect(router.place != nil)
     }
 
-    @Test("dismissing the list (.places -> nil) closes a stacked place modal")
-    func dismissingPlacesClosesStackedPlaceModal() {
+    /// Places-list-stacks-a-second-sheet fix: `PlacesListOverlay`'s
+    /// `onSelect` now calls `chrome.dismiss()` in the same beat it calls
+    /// `openPlace` (same `PAS-78` shape as `handleSearchResultSelection`),
+    /// so `.places -> nil` is now the *normal* row-selection transition,
+    /// not just a stray-state cleanup — and per the comment on
+    /// `handlePresentedSurfaceChange`'s `.places` branch, a place can only
+    /// ever have opened while `.places` was presented via that same row
+    /// selection (the list's scrim blocks map taps). Unconditionally
+    /// closing the place on any `.places` exit would immediately wipe out
+    /// the place selection just opened, so this branch is now guarded the
+    /// same way `.search`'s is: only when leaving `.places` for *another*
+    /// surface, not a full dismiss to `nil`. (Formerly
+    /// `dismissingPlacesClosesStackedPlaceModal`, which asserted the
+    /// opposite — that was the bug.)
+    @Test("dismissing the list (.places -> nil) leaves a place opened by that same selection standing")
+    func dismissingPlacesLeavesJustOpenedPlaceStanding() {
         let router = DetailRouter()
         router.openPlace(Place(
             id: "cafe", name: "cafe", category: .eatDrink, hoodID: "florentin",
@@ -127,7 +141,7 @@ struct MapScreenD8WiringTests {
 
         MapScreen.handlePresentedSurfaceChange(from: .places, to: nil, router: router)
 
-        #expect(router.place == nil)
+        #expect(router.place != nil)
     }
 
     /// PAS-42 (2026-08-04): `PlacesButton` no longer fades to

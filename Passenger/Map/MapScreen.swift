@@ -513,7 +513,17 @@ struct MapScreen: View {
             if chrome.presented == .places {
                 PlacesListOverlay(
                     entries: placesListEntries,
-                    onSelect: { place in detailRouter.openPlace(place) },
+                    // `PAS-78`-shape fix: `chrome.dismiss()` must run before
+                    // `openPlace`, same as `handleSearchResultSelection`
+                    // above — otherwise `.places` stays presented while the
+                    // place modal opens on top of it (two sheets stacked),
+                    // since `handlePresentedSurfaceChange`'s `.places`
+                    // backstop only fires on a `chrome.presented` change,
+                    // which a bare `openPlace` never triggers.
+                    onSelect: { place in
+                        chrome.dismiss()
+                        detailRouter.openPlace(place)
+                    },
                     onDismiss: { chrome.dismiss() }
                 )
             } else if chrome.presented == .profile {
@@ -879,7 +889,18 @@ struct MapScreen: View {
     /// via `dismissSearch()`, per this comment's own opening line.
     static func handlePresentedSurfaceChange(from oldValue: NavSurface?, to newValue: NavSurface?, router: DetailRouter) {
         guard oldValue != newValue else { return }
-        if oldValue == .places {
+        // Same `newValue != nil` shape as the `.search` branch below
+        // (`PAS-78` fix): a places-list row selection now dismisses
+        // `chrome` in the same beat it calls `openPlace` (see
+        // `PlacesListOverlay`'s `onSelect` above), so an unconditional
+        // `closePlace()` here — deferred to the next view-update pass —
+        // would immediately wipe out the place that selection just opened.
+        // Restricting to "leaving `.places` for another surface" preserves
+        // the backstop for every other path (✕, drag, tap-outside all
+        // dismiss to `nil` with no place ever opened, so `closePlace()`
+        // there is already a no-op) while no longer clobbering a fresh
+        // selection.
+        if oldValue == .places, newValue != nil {
             router.closePlace()
         }
         if oldValue == .search, newValue != nil {
