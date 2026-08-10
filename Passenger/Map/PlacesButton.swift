@@ -3,8 +3,8 @@ import SwiftUI
 /// The entry point to the Places list — a nav-row button (PAS-42,
 /// 2026-08-04: merged into `MapNavRow`, correcting T-036's own D7, which had
 /// corrected T-032's D1 the other way). Built to the existing
-/// `NearMeButton`/`HoodButton` chrome idiom: same 44×44 target, same
-/// `.thinMaterial` circle.
+/// `NearMeButton`/`HoodButton` chrome idiom: same 44×44 target, same Liquid
+/// Glass circle (T-107/`PAS-107`, was `.thinMaterial`).
 ///
 /// **No longer fades.** D7 originally faded this button to invisible
 /// whenever any `NavSurface` was presented, specifically so it couldn't be
@@ -34,7 +34,10 @@ struct PlacesButton: View {
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(Color.teal)  // §4 — analogous blue/indigo/teal family
                 .frame(width: 52, height: 52)  // Fitts's Law minimum (design-principles.md §2)
-                .background(.thinMaterial, in: Circle())
+                // `.regular`, matching `SearchButton`'s own reasoning
+                // (T-107/`PAS-107`) — see that file's comment. Grouped under
+                // `MapNavRow`'s shared `GlassEffectContainer`.
+                .glassEffect(.regular, in: Circle())
         }
         .accessibilityLabel("Places")
     }

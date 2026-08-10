@@ -8,6 +8,35 @@ import SwiftUI
 /// itself still knows nothing about fetching or caching, only what it's
 /// handed. It never sees `LocalQA/` — that module never reads or writes
 /// `HoodCatalog` (tourist-trap-flag TRD §2.2).
+///
+/// **Liquid Glass (T-107/`PAS-107`): the name/flag capsules below are
+/// `.glassEffect(.regular, in: Capsule())`, `.regular` for the same reason
+/// as `SearchButton`'s (over the live, unpredictable map, no dimming layer).
+/// Deliberately *not* wrapped in a shared `GlassEffectContainer`, even
+/// though several Hoods' capsules can be on screen at once at
+/// `.neighborhood`/`.close` zoom — two independent reasons, either one
+/// sufficient on its own:**
+/// 1. **The API doesn't allow it.** Each Hood's capsule lives inside its own
+///    `Annotation`, and `Map`'s `@MapContentBuilder` only accepts
+///    `MapContent`-conforming values — `Annotation` conforms, but
+///    `GlassEffectContainer` is a plain `View` and does not, so it cannot be
+///    written around a `ForEach<HoodLayer>` (or any group of `Annotation`s)
+///    inside `MapScreen.hoodLayers`. MapKit also hosts each `Annotation`'s
+///    content in its own placement context, positioned independently at a
+///    coordinate — even if the type system allowed it, there is no single
+///    shared view subtree spanning two different Hoods' annotations for a
+///    container to enclose.
+/// 2. **Nothing to group even within one annotation.** `annotationContent`
+///    below only ever renders one of its three branches at a time (name
+///    capsule / flag-label capsule / invisible a11y placeholder) — a single
+///    glass shape has no sibling to blend with, so a container around it
+///    would be inert.
+///
+/// Net effect: each capsule samples the map independently, exactly like
+/// today's `.thinMaterial` did. If nearby Hoods' capsules are ever found to
+/// visually clash at dense zoom, the fix is a spacing/zoom-gating change to
+/// `showsName`/`FlagCopy.centroidLabel`, not a container — this file has
+/// verified there is no `GlassEffectContainer` route available here.
 struct HoodLayer: MapContent {
     let hood: Hood
     let band: HeatBand?
@@ -107,7 +136,10 @@ struct HoodLayer: MapContent {
                     .font(.caption.weight(.medium))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(.thinMaterial, in: Capsule())
+                    // `.regular` — see this type's header comment
+                    // (T-107/`PAS-107`) for why no `GlassEffectContainer`
+                    // groups this across Hoods.
+                    .glassEffect(.regular, in: Capsule())
                     .accessibilityLabel(voiceOverLabel)
             } else if zoomTier == .neighborhood, let flagLabelText = FlagCopy.centroidLabel(flag: flag, band: band) {
                 // The flag's own label — `.neighborhood` tier only, flagged
@@ -120,7 +152,10 @@ struct HoodLayer: MapContent {
                     .foregroundStyle(Color("Flag"))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(.thinMaterial, in: Capsule())
+                    // `.regular` — see this type's header comment
+                    // (T-107/`PAS-107`) for why no `GlassEffectContainer`
+                    // groups this across Hoods.
+                    .glassEffect(.regular, in: Capsule())
                     .accessibilityLabel(voiceOverLabel)
             } else {
                 // Invisible at city-wide zoom (and at neighborhood zoom for

@@ -15,7 +15,8 @@ import SwiftUI
 /// actively tracking — blue ties it into the new nav-row palette (§4) so it
 /// reads as the same app rather than a 4th unrelated hue, while its
 /// position and smaller size already differentiate it from the 3-button
-/// row. No colored stroke ring (§4 — dropped for all 4 buttons).
+/// row. No colored stroke ring (§4 — dropped for all 4 buttons). Liquid
+/// Glass circle (T-107/`PAS-107`, was `.thinMaterial`).
 struct NearMeButton: View {
     let authorizationStatus: CLAuthorizationStatus
     let action: () -> Void
@@ -34,7 +35,12 @@ struct NearMeButton: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(isTracking ? Color.blue : Color.secondary)
                 .frame(width: 44, height: 44)  // Fitts's Law minimum (design-principles.md §2) — secondary control, not nav-row scale
-                .background(.thinMaterial, in: Circle())
+                // `.regular`, same reasoning as `SearchButton` (T-107/
+                // `PAS-107`) — sits directly over the live map, no dimming
+                // layer. Grouped with `CachedDataIndicator` under a shared
+                // `GlassEffectContainer` at the `MapScreen` call site (both
+                // stack in the same top-trailing overlay).
+                .glassEffect(.regular, in: Circle())
         }
         .accessibilityLabel(isDenied ? "Near me, location off" : "Near me")
     }

@@ -3,7 +3,8 @@ import SwiftUI
 /// The entry point to search (TRD §11 C6) — icon-only, no caption
 /// (`ux-flows.md` 2026-08-02 founder-direct addendum), built to the existing
 /// `NearMeButton`/`HoodButton` floating-chrome idiom: same 44×44 target, same
-/// `.thinMaterial` circle. Lives in `MapNavRow` (z7), not bucket-2 chrome —
+/// Liquid Glass circle (T-107/`PAS-107`, was `.thinMaterial`). Lives in
+/// `MapNavRow` (z7), not bucket-2 chrome —
 /// it must stay reachable while a `NavSurface` is presented, which is
 /// exactly what distinguishes the nav row from bucket-2 (T-032 D1).
 ///
@@ -23,7 +24,16 @@ struct SearchButton: View {
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(Color.blue)  // T-078/`PAS-60` reopened §4 — analogous blue/indigo/teal family, ring dropped
                 .frame(width: 52, height: 52)  // Fitts's Law minimum (design-principles.md §2)
-                .background(.thinMaterial, in: Circle())
+                // `.regular`, not `.clear` (T-107/`PAS-107`) — this circle
+                // sits directly over the live, unpredictable map with no
+                // scrim behind it, the exact case `.regular`'s adaptive
+                // legibility exists for (`.clear` needs an acceptable
+                // dimming layer underneath, which nothing here provides).
+                // Same call as the 6 modal surfaces (`design-principles.md`
+                // §8a) — one variant app-wide. Grouped with `ProfileButton`/
+                // `PlacesButton` under a shared `GlassEffectContainer` in
+                // `MapNavRow`, not here.
+                .glassEffect(.regular, in: Circle())
         }
         // Reverted to plain "Search" at T-081/`PAS-76`. `PAS-75` had
         // renamed this to "Search and hours" because `SearchOverlay`'s own

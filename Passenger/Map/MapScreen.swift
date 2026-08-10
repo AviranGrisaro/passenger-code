@@ -403,10 +403,19 @@ struct MapScreen: View {
             // `CachedDataIndicator` — both are top-trailing chrome and need
             // to coexist. Apple/Google-Maps-style placement, per Aviran's
             // explicit top-right instruction.
-            VStack(alignment: .trailing, spacing: 8) {
-                NearMeButton(authorizationStatus: locationStore.authorizationStatus, action: handleNearMeTap)
-                if densityStore.source == .cache {
-                    CachedDataIndicator()
+            //
+            // `GlassEffectContainer` (T-107/`PAS-107`): same reasoning as
+            // `MapNavRow`'s — `NearMeButton` and `CachedDataIndicator` (when
+            // shown) are two independent `.glassEffect()` shapes stacked
+            // close together, so they share one container to blend/sample
+            // consistently instead of clashing. `spacing: 8` matches the
+            // `VStack`'s own layout spacing.
+            GlassEffectContainer(spacing: 8) {
+                VStack(alignment: .trailing, spacing: 8) {
+                    NearMeButton(authorizationStatus: locationStore.authorizationStatus, action: handleNearMeTap)
+                    if densityStore.source == .cache {
+                        CachedDataIndicator()
+                    }
                 }
             }
             .padding()

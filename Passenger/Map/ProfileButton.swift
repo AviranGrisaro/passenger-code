@@ -4,7 +4,8 @@ import SwiftUI
 /// Profile "the 3rd of the 3 side-by-side nav buttons," so unlike Places
 /// (T-036's D7 correction) this sits exactly where T-032's D1 anticipated:
 /// z7, icon-only, no caption (`ux-flows.md`'s 2026-08-02 founder-direct
-/// addendum, T-032's D6 states the same rule for the heat button).
+/// addendum, T-032's D6 states the same rule for the heat button). Liquid
+/// Glass circle (T-107/`PAS-107`, was `.thinMaterial`).
 ///
 /// **Wired into `MapNavRow`** — landed once `MapNavRow.swift` existed
 /// (T-038's build) and settled, per this file's own original comment
@@ -27,7 +28,10 @@ struct ProfileButton: View {
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(Color.indigo)  // T-078/`PAS-60` reopened §4 — analogous blue/indigo/teal family, ring dropped
                 .frame(width: 52, height: 52)  // Fitts's Law minimum (design-principles.md §2)
-                .background(.thinMaterial, in: Circle())
+                // `.regular`, matching `SearchButton`'s own reasoning
+                // (T-107/`PAS-107`) — see that file's comment. Grouped under
+                // `MapNavRow`'s shared `GlassEffectContainer`.
+                .glassEffect(.regular, in: Circle())
         }
         .accessibilityLabel("Profile")
         .accessibilityAddTraits(isPresented ? [.isSelected] : [])

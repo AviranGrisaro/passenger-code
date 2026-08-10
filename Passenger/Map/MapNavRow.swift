@@ -86,10 +86,27 @@ struct MapNavRow: View {
     let onPlacesTap: () -> Void
 
     var body: some View {
-        HStack(spacing: 16) {
-            SearchButton(isPresented: isSearchPresented, action: onSearchTap)
-            ProfileButton(isPresented: isPassportPresented, action: onProfileTap)
-            PlacesButton(action: onPlacesTap)
+        // `GlassEffectContainer` (T-107/`PAS-107`, HIG "grouping Liquid Glass
+        // elements"): these 3 circles sit side by side, close enough that
+        // their independent glass samples would otherwise clash rather than
+        // read as one row — a container is a correctness requirement here
+        // (glass can't sample other glass; nearby glass shapes need to share
+        // one container so they blend/light consistently), not a
+        // performance nicety. `spacing: 16` matches the `HStack`'s own
+        // layout spacing rather than an arbitrary default, so the container's
+        // proximity threshold agrees with what's actually on screen. This
+        // does not change the row's own long-standing rule (T-032 D1/D6,
+        // above) — "separate side-by-side buttons, no shared container
+        // chrome" was about not adding a *visible* background/border behind
+        // all 3; `GlassEffectContainer` renders nothing of its own, it only
+        // coordinates how the 3 already-independent `.glassEffect()` circles
+        // sample and blend.
+        GlassEffectContainer(spacing: 16) {
+            HStack(spacing: 16) {
+                SearchButton(isPresented: isSearchPresented, action: onSearchTap)
+                ProfileButton(isPresented: isPassportPresented, action: onProfileTap)
+                PlacesButton(action: onPlacesTap)
+            }
         }
         // TRD §9 row 5b's own build note: this row's frame, as a whole,
         // needs to be queryable from a UI test. The individual buttons

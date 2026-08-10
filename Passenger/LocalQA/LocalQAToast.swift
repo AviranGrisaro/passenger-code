@@ -38,7 +38,13 @@ struct LocalQAToast: View {
             }
         }
         .padding()
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        // `.regular`, same reasoning as `SearchButton` (T-107/`PAS-107`) —
+        // this toast floats over the live map with no dimming layer behind
+        // it, and it carries body text (the flag question/confirmation
+        // copy) at every state, same shape of legibility risk as the 6
+        // modal surfaces (`design-principles.md` §8a). One instance on
+        // screen at a time — no `GlassEffectContainer` needed.
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16))
         .padding(.horizontal)
         .padding(.top, 8)
         .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
